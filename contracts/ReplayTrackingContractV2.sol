@@ -18,10 +18,7 @@ contract ReplayTrackingContractV2 is
 {
     using EnumerableSet for EnumerableSet.AddressSet;
     using Address for address;
-    using ReplayLibrary for ReplayLibrary.Record;
     using ReplayLibrary for ReplayLibrary.Transaction;
-    using ReplayLibrary for ReplayLibrary.DailyTransaction;
-    using ReplayLibrary for ReplayLibrary.BatchIncrementData;
 
     // Define roles
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -68,15 +65,14 @@ contract ReplayTrackingContractV2 is
     );
 
     // Mappings to store records and transactions
-    mapping(bytes32 => ReplayLibrary.Record) public consolidatedByMovie;
-    mapping(bytes32 => ReplayLibrary.Record) public consolidatedByMonth;
-    mapping(bytes32 => ReplayLibrary.Record) public consolidatedByYear;
+    mapping(bytes32 => ReplayLibrary.Transaction) public consolidatedByMovie;
+    mapping(bytes32 => ReplayLibrary.Transaction) public consolidatedByMonth;
+    mapping(bytes32 => ReplayLibrary.Transaction) public consolidatedByYear;
     mapping(bytes32 => ReplayLibrary.Transaction[])
         public consolidatedByMonthTransactions;
     mapping(bytes32 => ReplayLibrary.Transaction[])
         public consolidatedByYearTransactions;
-    mapping(bytes32 => ReplayLibrary.DailyTransaction[])
-        public dailyTransactions;
+    mapping(bytes32 => ReplayLibrary.Transaction[]) public dailyTransactions;
 
     // Set to store all users
     EnumerableSet.AddressSet private allUsers;
@@ -249,7 +245,7 @@ contract ReplayTrackingContractV2 is
     // Batch function to increment records for multiple users
     // Removed the reentrant since we want to insert in batches and only admin can add
     function batchIncrementRecords(
-        ReplayLibrary.BatchIncrementData[] calldata data
+        ReplayLibrary.Transaction[] calldata data
     ) external onlyAdmin whenNotPaused {
         require(data.length <= 100, "Batch size too large");
         for (uint256 i = 0; i < data.length; i++) {
@@ -280,7 +276,7 @@ contract ReplayTrackingContractV2 is
             day,
             movieId
         );
-        ReplayLibrary.Record memory record = consolidatedByMovie[keyMovie];
+        ReplayLibrary.Transaction memory record = consolidatedByMovie[keyMovie];
         return (record.timeWatched, record.amountEarned);
     }
 
@@ -291,7 +287,7 @@ contract ReplayTrackingContractV2 is
         uint256 year
     ) public view returns (uint256 timeWatched, uint256 amountEarned) {
         bytes32 keyMonth = ReplayLibrary.encodeMonthKey(userID, month, year);
-        ReplayLibrary.Record memory record = consolidatedByMonth[keyMonth];
+        ReplayLibrary.Transaction memory record = consolidatedByMonth[keyMonth];
         return (record.timeWatched, record.amountEarned);
     }
 
@@ -301,7 +297,7 @@ contract ReplayTrackingContractV2 is
         uint256 year
     ) public view returns (uint256 timeWatched, uint256 amountEarned) {
         bytes32 keyYear = ReplayLibrary.encodeYearKey(userID, year);
-        ReplayLibrary.Record memory record = consolidatedByYear[keyYear];
+        ReplayLibrary.Transaction memory record = consolidatedByYear[keyYear];
         return (record.timeWatched, record.amountEarned);
     }
 
@@ -330,7 +326,7 @@ contract ReplayTrackingContractV2 is
         uint256 month,
         uint256 year,
         uint256 day
-    ) public view returns (ReplayLibrary.DailyTransaction[] memory) {
+    ) public view returns (ReplayLibrary.Transaction[] memory) {
         bytes32 keyDay = ReplayLibrary.encodeKey(userID, month, year, day, "0");
         return dailyTransactions[keyDay];
     }
@@ -352,7 +348,7 @@ contract ReplayTrackingContractV2 is
                 month,
                 year
             );
-            ReplayLibrary.Record memory monthlyRecord = consolidatedByMonth[
+            ReplayLibrary.Transaction memory monthlyRecord = consolidatedByMonth[
                 keyMonth
             ];
             totalWatched = monthlyRecord.timeWatched;
@@ -361,7 +357,7 @@ contract ReplayTrackingContractV2 is
 
         // Get the yearly record
         bytes32 keyYear = ReplayLibrary.encodeYearKey(userID, year);
-        ReplayLibrary.Record memory yearlyRecord = consolidatedByYear[keyYear];
+        ReplayLibrary.Transaction memory yearlyRecord = consolidatedByYear[keyYear];
         totalWatched += yearlyRecord.timeWatched;
         totalEarned += yearlyRecord.amountEarned;
 
@@ -372,7 +368,7 @@ contract ReplayTrackingContractV2 is
                 month,
                 year
             );
-            ReplayLibrary.Record memory monthlyRecord = consolidatedByMonth[
+            ReplayLibrary.Transaction memory monthlyRecord = consolidatedByMonth[
                 keyMonth
             ];
             totalWatched -= monthlyRecord.timeWatched;
@@ -382,36 +378,42 @@ contract ReplayTrackingContractV2 is
 
     // Function to get the total number of transactions for a user over a specified period (e.g., month, year)
     function getTotalTransactionsByUser(
-    address userID,
-    uint256 month,
-    uint256 year
-) public view returns (uint256 totalTransactions) {
-    bytes32 keyMonth = ReplayLibrary.encodeMonthKey(userID, month, year);
-    ReplayLibrary.Transaction[] memory monthlyTransactions = consolidatedByMonthTransactions[keyMonth];
+        address userID,
+        uint256 month,
+        uint256 year
+    ) public view returns (uint256 totalTransactions) {
+        bytes32 keyMonth = ReplayLibrary.encodeMonthKey(userID, month, year);
+        ReplayLibrary.Transaction[]
+            memory monthlyTransactions = consolidatedByMonthTransactions[
+                keyMonth
+            ];
 
-    bytes32 keyYear = ReplayLibrary.encodeYearKey(userID, year);
-    ReplayLibrary.Transaction[] memory yearlyTransactions = consolidatedByYearTransactions[keyYear];
+        bytes32 keyYear = ReplayLibrary.encodeYearKey(userID, year);
+        ReplayLibrary.Transaction[]
+            memory yearlyTransactions = consolidatedByYearTransactions[keyYear];
 
-    if (monthlyTransactions.length == 0 && yearlyTransactions.length == 0) {
-        return 0;
-    }
+        if (monthlyTransactions.length == 0 && yearlyTransactions.length == 0) {
+            return 0;
+        }
 
-    totalTransactions = monthlyTransactions.length;
+        totalTransactions = monthlyTransactions.length;
 
-    // Calcula o total de transações anuais excluindo as transações mensais duplicadas
-    uint256 uniqueYearlyTransactions = yearlyTransactions.length;
-    for (uint256 i = 0; i < monthlyTransactions.length; i++) {
-        for (uint256 j = 0; j < yearlyTransactions.length; j++) {
-            if (keccak256(abi.encode(monthlyTransactions[i])) == keccak256(abi.encode(yearlyTransactions[j]))) {
-                uniqueYearlyTransactions--;
-                break;
+        // Calcula o total de transações anuais excluindo as transações mensais duplicadas
+        uint256 uniqueYearlyTransactions = yearlyTransactions.length;
+        for (uint256 i = 0; i < monthlyTransactions.length; i++) {
+            for (uint256 j = 0; j < yearlyTransactions.length; j++) {
+                if (
+                    keccak256(abi.encode(monthlyTransactions[i])) ==
+                    keccak256(abi.encode(yearlyTransactions[j]))
+                ) {
+                    uniqueYearlyTransactions--;
+                    break;
+                }
             }
         }
+
+        totalTransactions += uniqueYearlyTransactions;
     }
-
-    totalTransactions += uniqueYearlyTransactions;
-}
-
 
     // Event-based approach for off-chain aggregation
 
@@ -492,7 +494,7 @@ contract ReplayTrackingContractV2 is
         // Loop through all records and accumulate the total watched and earned for the user
         for (uint256 year = 2021; year <= topYear; year++) {
             bytes32 keyYear = ReplayLibrary.encodeYearKey(userID, year);
-            ReplayLibrary.Record memory yearlyRecord = consolidatedByYear[
+            ReplayLibrary.Transaction memory yearlyRecord = consolidatedByYear[
                 keyYear
             ];
             totalWatched += yearlyRecord.timeWatched;

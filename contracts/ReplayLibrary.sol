@@ -2,19 +2,8 @@
 pragma solidity ^0.8.24;
 
 library ReplayLibrary {
-    struct Record {
-        uint256 timeWatched;
-        uint256 amountEarned;
-    }
-
+   
     struct Transaction {
-        string txnId;
-        address walletAddress;
-        uint256 amount;
-        string type_; // contentOwner, user, or protocol fees
-    }
-
-    struct DailyTransaction {
         uint256 day;
         uint256 month;
         uint256 year;
@@ -22,17 +11,14 @@ library ReplayLibrary {
         address walletAddress;
         uint256 amount;
         string type_;
-    }
 
-    struct BatchIncrementData {
-        address userID;
-        uint256 month;
-        uint256 year;
-        uint256 day;
-        string movieId;
         uint256 timeWatched;
         uint256 amountEarned;
+
+        address userID;
+        string movieId;
     }
+
 
     function encodeKey(
         address userID,
