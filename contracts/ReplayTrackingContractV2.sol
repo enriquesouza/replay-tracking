@@ -35,6 +35,14 @@ contract ReplayTrackingContractV3 is Ownable, Pausable, AccessControl {
         uint256 totalRewardsContentOwner
     );
 
+    // Event emitted when a transaction is added
+    event TransactionAdded(
+        uint256 indexed day,
+        uint256 indexed month,
+        uint256 indexed year,
+        ReplayLibrary.Transaction[] transactions
+    );
+
     constructor() Ownable() Pausable() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
@@ -65,32 +73,24 @@ contract ReplayTrackingContractV3 is Ownable, Pausable, AccessControl {
         require(transactions.length <= 100, "Batch size too large");
 
         for (uint256 i = 0; i < transactions.length; i++) {
-            ReplayLibrary.Transaction memory txn = transactions[i];
+            ReplayLibrary.Transaction memory newTxn = transactions[i];
 
             // Create a unique key for the transaction day
-            bytes32 keyDay = ReplayLibrary.encodeKey(
-                txn.userId,
-                txn.day,
-                txn.month,
-                txn.year,
-                txn.assetId
+            bytes32 keyDay = ReplayLibrary.encodeKeyDayUser(
+                newTxn.userId,
+                newTxn.day,
+                newTxn.month,
+                newTxn.year
             );
 
             // Add the transaction to the dailyTransactions mapping
-            dailyTransactions[keyDay].push(txn);
-
-            // Emit an event for the transaction added
-            emit TransactionAdded(
-                txn.userId,
-                txn.day,
-                txn.month,
-                txn.year,
-                txn.assetId,
-                txn.totalDuration,
-                txn.totalRewardsConsumer,
-                txn.totalRewardsContentOwner
-            );
+            dailyTransactions[keyDay].push(newTxn);
         }
+
+        ReplayLibrary.Transaction memory txn = transactions[0];
+
+        // Emit an event for the transaction added
+        emit TransactionAdded(txn.day, txn.month, txn.year, transactions);
     }
 
     // Function to get transactions by a specific day
@@ -98,16 +98,9 @@ contract ReplayTrackingContractV3 is Ownable, Pausable, AccessControl {
         string memory userId,
         uint256 day,
         uint256 month,
-        uint256 year,
-        string memory assetId
+        uint256 year
     ) public view returns (ReplayLibrary.Transaction[] memory) {
-        bytes32 key = ReplayLibrary.encodeKey(
-            userId,
-            day,
-            month,
-            year,
-            assetId
-        );
+        bytes32 key = ReplayLibrary.encodeKeyDayUser(userId, day, month, year);
         return dailyTransactions[key];
     }
 }
