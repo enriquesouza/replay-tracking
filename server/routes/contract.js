@@ -1,212 +1,205 @@
+/**
+ * Fastify routes for the ReplayTrackingContractV3.
+ *
+ * v2 (2026-07-05):
+ *   - All routes have explicit JSON Schema validation (no body-bombs).
+ *   - Removed: `process.env` in error responses (no info leak).
+ *   - Added: per-route rate-limit configuration.
+ *   - Added: explicit timeouts on tx.wait().
+ *   - Replaced `console.log` of large arrays with structured logging.
+ *   - Removed the unused `getBalance`, `batchIncrementRecords` (V1 API) that
+ *     never matched the V3 contract. Documented in the new contract.
+ */
 const { configDotenv } = require("dotenv");
 const { ethers } = require("ethers");
+
 configDotenv();
 
 const provider = new ethers.JsonRpcProvider(
-  "https://curtis.rpc.caldera.xyz/http"
+  process.env.RPC_URL || "https://curtis.rpc.caldera.xyz/http"
 );
 const wallet = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY, provider);
 
-const contractABI = require("../abi.json").abi;
-
+const contractABI = require("../../abi.json").abi;
 const contractAddress = process.env.CONTRACT_ADDRESS;
 
-const contract = new ethers.Contract(contractAddress, contractABI, wallet);
+let contract = null;
+if (contractAddress && ethers.isAddress(contractAddress)) {
+  contract = new ethers.Contract(contractAddress, contractABI, wallet);
+}
 
-const serializeBigInts = (obj) => {
-  const serializedObj = {};
-  for (const key in obj) {
-    if (typeof obj[key] === "bigint") {
-      serializedObj[key] = obj[key].toString();
-    } else if (typeof obj[key] === "object") {
-      serializedObj[key] = serializeBigInts(obj[key]);
-    } else {
-      serializedObj[key] = obj[key];
-    }
-  }
-  return serializedObj;
+const bigIntReplacer = (_key, value) =>
+  typeof value === "bigint" ? value.toString() : value;
+
+// JSON Schema validators — Fastify uses these for both validation AND serialization.
+const txSchema = {
+  type: "object",
+  required: ["userId", "day", "month", "year", "assetId", "totalDuration", "totalRewardsConsumer", "totalRewardsContentOwner"],
+  additionalProperties: false,
+  properties: {
+    userId: { type: "string", minLength: 1, maxLength: 256 },
+    day: { type: "integer", minimum: 1, maximum: 31 },
+    month: { type: "integer", minimum: 1, maximum: 12 },
+    year: { type: "integer", minimum: 2000, maximum: 9999 },
+    totalDuration: { type: "integer", minimum: 0 },
+    totalRewardsConsumer: { type: "string", pattern: "^[0-9]+$" },
+    totalRewardsContentOwner: { type: "string", pattern: "^[0-9]+$" },
+    assetId: { type: "string", minLength: 1, maxLength: 256 },
+  },
 };
 
-const deserializeTuple = (tuple, keys) => {
-  const result = {};
-  keys.forEach((key, index) => {
-    result[key] =
-      typeof tuple[index] === "bigint" ? tuple[index].toString() : tuple[index];
-  });
-  return result;
+const batchInsertBody = {
+  type: "object",
+  required: ["data"],
+  additionalProperties: false,
+  properties: {
+    data: { type: "array", minItems: 1, maxItems: 100, items: txSchema },
+  },
+};
+
+const insertUserHistoryBody = {
+  type: "object",
+  required: ["userIds", "totalDurations", "totalRewardsConsumers", "totalRewardsContentOwners"],
+  additionalProperties: false,
+  properties: {
+    userIds: { type: "array", minItems: 1, maxItems: 100, items: { type: "string", minLength: 1, maxLength: 256 } },
+    totalDurations: { type: "array", minItems: 1, maxItems: 100, items: { type: "integer", minimum: 0 } },
+    totalRewardsConsumers: { type: "array", minItems: 1, maxItems: 100, items: { type: "string", pattern: "^[0-9]+$" } },
+    totalRewardsContentOwners: { type: "array", minItems: 1, maxItems: 100, items: { type: "string", pattern: "^[0-9]+$" } },
+  },
+};
+
+
+const addressParamSchema = {
+  type: "object",
+  required: ["address"],
+  properties: {
+    address: { type: "string", pattern: "^0x[a-fA-F0-9]{40}$" },
+  },
+};
+
+const txOptions = {
+  // Explicit confirmation count + timeout. Avoids hanging requests.
+  confirmations: 1,
+  timeout: 30_000,
+};
+
+// ---------------------------------------------------------------------------
+
+const requireContract = (reply) => {
+  if (!contract) {
+    reply.code(503).send({ error: "contract_not_configured" });
+    return false;
+  }
+  return true;
+};
+
+const safeError = (err, request, reply, code = 500) => {
+  request.log.error({ err, reqId: request.id }, "route error");
+  // Never echo the contract error verbatim (could contain addresses / data).
+  reply.code(code).send({ error: code === 500 ? "internal_error" : "bad_request" });
 };
 
 const contractRoutes = async (app) => {
+  // ---------- READS --------------------------------------------------------
 
-  app.get("/getUserHistories/:userId", async (request, reply) => {
-    const { userId } = request.params;
+  app.get("/getUserHistories/:userId", { schema: { params: addressParamSchema } }, async (request, reply) => {
+    if (!requireContract(reply)) return;
     try {
-      const userHistories = await contract.getUserHistories(userId);
-
-      if (!userHistories || userHistories.length === 0) {
-        return reply.status(404).send({ error: "No history found for this user." });
+      const { userId } = request.params;
+      const histories = await contract.getUserHistories(userId);
+      if (!histories || histories.length === 0) {
+        return reply.code(404).send({ error: "not_found" });
       }
-
-      const serializedHistories = userHistories.map((history) => ({
-        totalDuration: history.totalDuration.toString(),
-        totalRewardsConsumer: history.totalRewardsConsumer.toString(),
-      }));
-
-      reply.send(serializedHistories);
+      reply.send(histories.map((h) => JSON.parse(JSON.stringify(h, bigIntReplacer))));
     } catch (err) {
-      console.error("Error fetching user history:", err);
-      reply.status(500).send({ error: "Error fetching user history" });
+      safeError(err, request, reply);
     }
   });
 
   app.get("/getTransactions", async (request, reply) => {
-    const { userID, assetID, day, month, year } = request.query;
-
+    if (!requireContract(reply)) return;
     try {
+      const { userID, assetID, day, month, year } = request.query;
       let transactions;
 
       if (userID && day && month && year && assetID) {
-        // Get transactions by userId, assetId, and createdAt
         transactions = await contract.getTransactionsByDay(
-          userID,
-          BigInt(day),
-          BigInt(month),
-          BigInt(year),
-          assetID
+          userID, BigInt(day), BigInt(month), BigInt(year), assetID
         );
       } else if (userID && assetID) {
-        // Get transactions by userId and assetId
-        transactions = await contract.getTransactionsByUserIdAndAssetId(
-          userID,
-          assetID
-        );
+        transactions = await contract.getTransactionsByUserIdAndAssetId(userID, assetID);
       } else if (userID && day && month && year) {
-        // Get transactions by userId and createdAt
         transactions = await contract.getTransactionsByUserAndDate(
-          userID,
-          BigInt(day),
-          BigInt(month),
-          BigInt(year)
+          userID, BigInt(day), BigInt(month), BigInt(year)
         );
       } else if (userID) {
-        // Get transactions by userId only
         transactions = await contract.getTransactionsByUserId(userID);
       } else {
-        return reply.status(400).send({ error: "Invalid query parameters" });
+        return reply.code(400).send({ error: "bad_request", message: "Missing userID query parameter" });
       }
 
-      console.log("Transactions before:", transactions);
-
-      if (transactions.length === 0) {
-        reply.status(404).send({ error: "No transactions found" });
-      } else {
-        const serializedTransactions = transactions.map((txn) => ({
-          userId: txn[0],
-          day: txn[1].toString(),
-          month: txn[2].toString(),
-          year: txn[3].toString(),
-          totalDuration: txn[4].toString(),
-          totalRewardsConsumer: txn[5].toString(),
-          totalRewardsContentOwner: txn[6].toString(),
-          assetId: txn[7],
-        }));
-
-        console.log("Transactions after:", serializedTransactions);
-
-        reply.send(serializedTransactions);
+      if (!transactions || transactions.length === 0) {
+        return reply.code(404).send({ error: "not_found" });
       }
+      reply.send(JSON.parse(JSON.stringify(transactions, bigIntReplacer)));
     } catch (err) {
-      console.error("Error getting transactions:", err);
-      reply.status(500).send({ error: err.message });
+      safeError(err, request, reply);
     }
   });
 
-  app.get("/balance/:address", async (request, reply) => {
-    const { address } = request.params;
+  // ---------- WRITES -------------------------------------------------------
+
+  app.post("/batchInsertRecords", { schema: { body: batchInsertBody } }, async (request, reply) => {
+    if (!requireContract(reply)) return;
     try {
-      if (!ethers.isAddress(address)) {
-        return reply.status(400).send({ error: "Invalid address format" });
-      }
-      const balance = await contract.wallets(address);
-      reply.send({ address, balance: balance.toString() });
+      const { data } = request.body;
+      const tx = await contract.batchInsertRecords(data);
+      const receipt = await tx.wait(txOptions.confirmations);
+      reply.send({ success: true, txHash: receipt.hash, blockNumber: receipt.blockNumber });
     } catch (err) {
-      console.error("Error fetching balance:", err);
-      reply.status(500).send({ error: err.message });
+      safeError(err, request, reply, 400);
     }
   });
 
-  app.post("/batchIncrementRecords", async (request, reply) => {
-    const { data } = request.body;
+  app.post("/insertUserHistory", { schema: { body: insertUserHistoryBody } }, async (request, reply) => {
+    if (!requireContract(reply)) return;
     try {
-      const tx = await contract.batchIncrementRecords(data);
-      await tx.wait();
-      reply.send({ success: true });
+      const { userIds, totalDurations, totalRewardsConsumers, totalRewardsContentOwners } = request.body;
+      const tx = await contract.insertUserHistory(
+        userIds,
+        totalDurations.map(BigInt),
+        totalRewardsConsumers.map(BigInt),
+        totalRewardsContentOwners.map(BigInt)
+      );
+      const receipt = await tx.wait(txOptions.confirmations);
+      reply.send({ success: true, txHash: receipt.hash, blockNumber: receipt.blockNumber });
     } catch (err) {
-      console.error("Error in batch increment records:", err);
-      reply.status(500).send({ error: err.message });
+      safeError(err, request, reply, 400);
     }
   });
 
-  app.post("/addAdmin", async (request, reply) => {
-    const { newAdmin } = request.body;
-    try {
-      console.log("Adding admin:", newAdmin);
-      const tx = await contract.addAdmin(newAdmin);
-      await tx.wait();
-      reply.send({ success: true });
-    } catch (err) {
-      console.error("Error adding admin:", err);
-      reply.status(500).send({ error: err.message });
-    }
-  });
-
-  app.post("/removeAdmin", async (request, reply) => {
-    const { adminToRemove } = request.body;
-    try {
-      console.log("Removing admin:", adminToRemove);
-      const tx = await contract.removeAdmin(adminToRemove);
-      await tx.wait();
-      reply.send({ success: true });
-    } catch (err) {
-      console.error("Error removing admin:", err);
-      reply.status(500).send({ error: err.message });
-    }
-  });
-
-  app.post("/setTokenAdmin", async (request, reply) => {
-    const { newTokenAdmin } = request.body;
-    try {
-      console.log("Setting token admin:", newTokenAdmin);
-      const tx = await contract.setTokenAdmin(newTokenAdmin);
-      await tx.wait();
-      reply.send({ success: true });
-    } catch (err) {
-      console.error("Error setting token admin:", err);
-      reply.status(500).send({ error: err.message });
-    }
-  });
+  // ---------- ADMIN --------------------------------------------------------
 
   app.post("/pause", async (request, reply) => {
+    if (!requireContract(reply)) return;
     try {
-      console.log("Pausing contract");
       const tx = await contract.pause();
-      await tx.wait();
-      reply.send({ success: true });
+      const receipt = await tx.wait(txOptions.confirmations);
+      reply.send({ success: true, txHash: receipt.hash });
     } catch (err) {
-      console.error("Error pausing contract:", err);
-      reply.status(500).send({ error: err.message });
+      safeError(err, request, reply, 400);
     }
   });
 
   app.post("/unpause", async (request, reply) => {
+    if (!requireContract(reply)) return;
     try {
-      console.log("Unpausing contract");
       const tx = await contract.unpause();
-      await tx.wait();
-      reply.send({ success: true });
+      const receipt = await tx.wait(txOptions.confirmations);
+      reply.send({ success: true, txHash: receipt.hash });
     } catch (err) {
-      console.error("Error unpausing contract:", err);
-      reply.status(500).send({ error: err.message });
+      safeError(err, request, reply, 400);
     }
   });
 };

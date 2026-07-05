@@ -1,0 +1,15 @@
+# Python dependencies for replay-tracking.
+# Install with one of:
+#   bash scripts/python-setup.sh              # uses uv, project-local .venv
+#   uv venv && source .venv/bin/activate && uv pip install -r requirements.txt
+#   pipx install eth-ape eth-brownie         # global CLI tools
+
+# Modern Python framework (successor to Brownie)
+eth-ape==0.8.50
+ape-hardhat>=0.6
+ape-foundry>=0.7
+ape-vyper>=0.6
+pytest>=8.0
+
+# Legacy Python framework (still works, in maintenance mode)
+eth-brownie==1.22.2

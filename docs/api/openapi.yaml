@@ -1,0 +1,148 @@
+openapi: 3.0.3
+info:
+  title: Replay Tracking API
+  version: 2.1.0
+  description: |
+    Fastify API for the ReplayTrackingContractV3 smart contract.
+    All write endpoints require the `ADMIN_ROLE` on-chain; all
+    endpoints require `X-Api-Key` (or JWT) in production.
+servers:
+  - url: http://localhost:3000
+    description: Local
+  - url: https://api.example.com
+    description: Production
+security:
+  - ApiKeyAuth: []
+paths:
+  /health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+                  uptime: { type: number }
+  /ready:
+    get:
+      summary: Readiness check
+      security: []
+      responses:
+        "200":
+          description: Ready
+        "503":
+          description: Not ready
+  /getUserHistories/{userId}:
+    get:
+      summary: Get all histories for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string, maxLength: 256 }
+      responses:
+        "200":
+          description: A list of user histories
+        "404":
+          description: No history for this user
+  /getTransactions:
+    get:
+      summary: Get transactions, with optional filters
+      parameters:
+        - name: userID
+          in: query
+          schema: { type: string }
+        - name: assetID
+          in: query
+          schema: { type: string }
+        - name: day
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 31 }
+        - name: month
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 12 }
+        - name: year
+          in: query
+          schema: { type: integer, minimum: 2000, maximum: 9999 }
+      responses:
+        "200":
+          description: A list of transactions
+        "404":
+          description: No transactions found
+  /batchInsertRecords:
+    post:
+      summary: Insert a batch of transaction records
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                data:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { $ref: "#/components/schemas/Transaction" }
+      responses:
+        "200":
+          description: Inserted
+        "400":
+          description: Bad request
+  /insertUserHistory:
+    post:
+      summary: Insert a batch of user histories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userIds, totalDurations, totalRewardsConsumers, totalRewardsContentOwners]
+              properties:
+                userIds: { type: array, items: { type: string }, minItems: 1, maxItems: 100 }
+                totalDurations: { type: array, items: { type: integer, minimum: 0 }, minItems: 1, maxItems: 100 }
+                totalRewardsConsumers: { type: array, items: { type: string, pattern: "^[0-9]+$" }, minItems: 1, maxItems: 100 }
+                totalRewardsContentOwners: { type: array, items: { type: string, pattern: "^[0-9]+$" }, minItems: 1, maxItems: 100 }
+      responses:
+        "200":
+          description: Inserted
+        "400":
+          description: Bad request
+  /pause:
+    post:
+      summary: Pause the contract (admin only)
+      responses:
+        "200": { description: Paused }
+        "400": { description: Bad request }
+  /unpause:
+    post:
+      summary: Unpause the contract (admin only)
+      responses:
+        "200": { description: Unpaused }
+        "400": { description: Bad request }
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+  schemas:
+    Transaction:
+      type: object
+      required: [userId, day, month, year, assetId, totalDuration, totalRewardsConsumer, totalRewardsContentOwner]
+      properties:
+        userId: { type: string, maxLength: 256 }
+        day: { type: integer, minimum: 1, maximum: 31 }
+        month: { type: integer, minimum: 1, maximum: 12 }
+        year: { type: integer, minimum: 2000, maximum: 9999 }
+        totalDuration: { type: integer, minimum: 0 }
+        totalRewardsConsumer: { type: string, pattern: "^[0-9]+$" }
+        totalRewardsContentOwner: { type: string, pattern: "^[0-9]+$" }
+        assetId: { type: string, maxLength: 256 }

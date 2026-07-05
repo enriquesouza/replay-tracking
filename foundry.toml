@@ -1,0 +1,26 @@
+# Foundry config — Solidity 0.8.35, EVM osaka
+# https://book.getfoundry.sh/
+
+[profile.default]
+src = "contracts"
+out = "out"
+libs = ["node_modules"]
+test = "test"             # Foundry test dir (we use tests/ for vitest; Foundry tests are separate)
+cache_path = "cache"
+optimizer = true
+optimizer_runs = 200
+solc_version = "0.8.35"
+evm_version = "osaka"
+verbosity = 2
+fuzz = { runs = 256 }
+invariant = { runs = 32, depth = 32, fail_on_revert = false }
+
+# Remappings for OpenZeppelin (so forge can resolve `@openzeppelin/contracts/...`)
+# See ./remappings.txt
+
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
+quote_style = "double"

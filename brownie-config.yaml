@@ -1,0 +1,31 @@
+# Brownie config — legacy Python tool (https://eth-brownie.readthedocs.io/)
+# Brownie is in maintenance mode; prefer Ape. Kept here for projects that still use it.
+
+project_structure:
+  contracts: contracts
+  interfaces: interfaces
+  scripts: scripts
+  tests: tests
+  reports: reports
+  externals: build/externals
+
+networks:
+  development:
+    host: http://127.0.0.1:8545
+    chain_id: 31337
+
+compilers:
+  solc:
+    remappings:
+      - "@openzeppelin=node_modules/@openzeppelin"
+    optimizer:
+      enabled: true
+      runs: 200
+    evm_version: osaka
+
+wallets:
+  accounts: []
+
+# Tell Brownie where to look for the dev pragma
+solidity:
+  version: 0.8.35

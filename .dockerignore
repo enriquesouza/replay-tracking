@@ -1,0 +1,17 @@
+node_modules/
+artifacts/
+cache/
+out/
+broadcast/
+typechain-types/
+coverage/
+.git/
+.github/
+.idea/
+.vscode/
+.upgrade/
+.venv/
+*.log
+.DS_Store
+.env
+.env.local

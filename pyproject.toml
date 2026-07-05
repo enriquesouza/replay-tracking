@@ -1,0 +1,39 @@
+[project]
+name = "replay-tracking-python"
+version = "0.1.0"
+description = "Python tools for the replay-tracking smart contracts (Ape + Brownie, optional)."
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = []
+
+[project.optional-dependencies]
+ape = [
+  "eth-ape==0.8.50",
+  "ape-hardhat",
+  "ape-foundry",
+  "ape-vyper",
+  "pytest",
+]
+brownie = [
+  "eth-brownie==1.22.2",
+]
+all = [
+  "eth-ape==0.8.50",
+  "ape-hardhat",
+  "ape-foundry",
+  "ape-vyper",
+  "eth-brownie==1.22.2",
+  "pytest",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+python_files = "test_*.py"
+
+[tool.ape]
+default_ecosystem = "ethereum"
+default_network = "ethereum:local:foundry"

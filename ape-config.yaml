@@ -1,0 +1,38 @@
+# Ape config — https://docs.apeworx.io/ape/
+name: replay-tracking
+default_ecosystem: ethereum
+default_network: ethereum:local:foundry
+
+plugins:
+  - name: hardhat
+  - name: foundry
+
+# Compiler: pin to the same Solidity version we use in Hardhat
+solidity:
+  - name: solc
+    version: 0.8.35
+    evm_version: osaka
+    settings:
+      optimizer:
+        enabled: true
+        runs: 200
+
+# Networks — these match the deploy scripts
+networks:
+  ethereum:
+    local:
+      - name: hardhat
+        chain_id: 31337
+        default_provider: hardhat
+      - name: anvil
+        chain_id: 31337
+        default_provider: foundry
+        base_fee_priority_fee: 0
+      - name: foundry
+        chain_id: 31337
+        default_provider: foundry
+    mainnet:
+      - name: camp-network-testnet
+        chain_id: 325000
+        default_provider: geth
+        uri: https://rpc.camp-network-testnet.gelato.digital

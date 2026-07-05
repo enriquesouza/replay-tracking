@@ -2,59 +2,54 @@ name: CI
 
 on:
   push:
-    branches:
-      - api
-      # - main
-      # - 'feature/*'
-  # pull_request:
-  #   branches:
-  #     - main
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
-
-    services:
-      hardhat:
-        image: ethereum/solc:0.8.24
-        ports:
-          - 8545:8545
-
+    timeout-minutes: 20
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
 
-    - name: Cache Node.js modules
-      uses: actions/cache@v3
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
+      - name: Install
+        run: npm ci
 
-    - name: Install dependencies
-      run: npm install
+      - name: Audit
+        run: npm audit --audit-level=moderate
 
-    - name: Compile contracts
-      run: npx hardhat compile
+      - name: Lint Solidity
+        run: npm run lint:sol
 
-    - name: Run Hardhat node in background
-      run: npx hardhat node &
-      shell: bash
+      - name: Lint JS
+        run: npm run lint:js
 
-    - name: Deploy contracts
-      run: npx hardhat run --network localhost scripts/deploy.js
+      - name: Format check
+        run: npm run format:check
 
-    - name: Start Fastify server
-      run: nohup npm start &
+      - name: Compile
+        run: npm run compile
 
-    - name: Wait for Fastify server to start
-      run: sleep 10
+      - name: Contract tests
+        run: npm run test:contracts
 
-    - name: Run tests
-      run: npm run test
+      - name: Setup Foundry
+        run: |
+          curl -L https://foundry.paradigm.xyz | bash
+          source $HOME/.foundry/env
+          foundryup
+
+      - name: Forge build
+        run: |
+          source $HOME/.foundry/env
+          forge build
+
+      - name: Build ABI artifact
+        run: cp artifacts/contracts/ReplayTrackingContractV2.sol/ReplayTrackingContractV3.json server/abi.json
