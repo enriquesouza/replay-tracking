@@ -30,7 +30,9 @@ async function main() {
     );
   }
 
-  const artifact = require(`../artifacts/contracts/ReplayTrackingContractV2.sol/ReplayTrackingContractV3.json`);
+  const artifact = require(
+    `../artifacts/contracts/ReplayTrackingContractV2.sol/ReplayTrackingContractV3.json`
+  );
   const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, wallet);
 
   console.log(`Deployer: ${wallet.address}`);

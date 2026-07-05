@@ -1,26 +1,29 @@
 # Multi-stage build for the replay-tracking Fastify API.
+# Uses the official Bun image (oven/bun) as the runtime — Bun is ~3x faster
+# than Node on startup and runs Hardhat + Ethers v6 + OZ v5 with no changes.
+#
 # Build:  docker build -t replay-tracking .
 # Run:    docker run -p 3000:3000 --env-file .env replay-tracking
 
-# ---------- Stage 1: build (compile contracts + node_modules) ----------
-FROM node:20-alpine AS builder
+# ---------- Stage 1: build (compile contracts + install deps) ----------
+FROM oven/bun:1.3.13 AS builder
 WORKDIR /app
 
 # Install build deps for any native modules (none today, but defensive).
-RUN apk add --no-cache python3 make g++
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json* ./
-RUN npm ci --no-audit --no-fund
+# Copy the manifest + lockfile first for layer caching.
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile
 
 COPY . .
 # Compile the Solidity contracts (artifact is needed by the runtime).
-RUN npm run compile
-
-# Prune dev dependencies for the runtime image.
-RUN npm prune --omit=dev
+RUN bunx hardhat compile
 
 # ---------- Stage 2: runtime ----------
-FROM node:20-alpine AS runtime
+FROM oven/bun:1.3.13-slim AS runtime
 WORKDIR /app
 
 # Drop privileges.
@@ -36,4 +39,5 @@ ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/health || exit 1
 
-CMD ["node", "index.js"]
+# Bun's `bun run` reads shebang scripts; the canonical command is just:
+CMD ["bun", "run", "index.js"]

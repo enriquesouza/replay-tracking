@@ -16,27 +16,27 @@
 
 The contract in `contracts/ReplayTrackingContractV2.sol` must replace these imports:
 
-| Old (v4 path) | New (v5 path) |
-|---|---|
-| `@openzeppelin/contracts47/security/Pausable.sol` | `@openzeppelin/contracts/utils/Pausable.sol` |
+| Old (v4 path)                                            | New (v5 path)                                       |
+| -------------------------------------------------------- | --------------------------------------------------- |
+| `@openzeppelin/contracts47/security/Pausable.sol`        | `@openzeppelin/contracts/utils/Pausable.sol`        |
 | `@openzeppelin/contracts47/security/ReentrancyGuard.sol` | `@openzeppelin/contracts/utils/ReentrancyGuard.sol` |
-| `@openzeppelin/contracts47/access/Ownable.sol` | `@openzeppelin/contracts/access/Ownable.sol` |
-| `@openzeppelin/contracts47/access/AccessControl.sol` | `@openzeppelin/contracts/access/AccessControl.sol` |
-| `@openzeppelin/contracts47/utils/Address.sol` | `@openzeppelin/contracts/utils/Address.sol` |
+| `@openzeppelin/contracts47/access/Ownable.sol`           | `@openzeppelin/contracts/access/Ownable.sol`        |
+| `@openzeppelin/contracts47/access/AccessControl.sol`     | `@openzeppelin/contracts/access/AccessControl.sol`  |
+| `@openzeppelin/contracts47/utils/Address.sol`            | `@openzeppelin/contracts/utils/Address.sol`         |
 
 ### Source-level changes (also for Agent 8)
 
 ```solidity
 // OLD:
 constructor() Ownable() Pausable() {
-    _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    _grantRole(ADMIN_ROLE, msg.sender);
+  _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+  _grantRole(ADMIN_ROLE, msg.sender);
 }
 
 // NEW (v5):
 constructor(address initialOwner) Ownable(initialOwner) Pausable() {
-    _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    _grantRole(ADMIN_ROLE, msg.sender);
+  _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+  _grantRole(ADMIN_ROLE, msg.sender);
 }
 ```
 

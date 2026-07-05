@@ -13,32 +13,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: "20"
-          cache: "npm"
+          bun-version: 1.3.13
 
       - name: Install
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Audit
-        run: npm audit --audit-level=moderate
+        run: bun audit --audit-level=moderate
 
       - name: Lint Solidity
-        run: npm run lint:sol
+        run: bun run lint:bun:sol
 
       - name: Lint JS
-        run: npm run lint:js
+        run: bun run lint:bun:js
 
       - name: Format check
-        run: npm run format:check
+        run: bunx prettier --check "**/*.{js,ts,json,md,sol}" --ignore-path .gitignore
 
       - name: Compile
-        run: npm run compile
+        run: bun run compile:bun
 
       - name: Contract tests
-        run: npm run test:contracts
+        run: bun run test:contracts:bun
 
       - name: Setup Foundry
         run: |

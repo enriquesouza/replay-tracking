@@ -18,11 +18,13 @@ plugin versions (`hardhat-ethers@^3.1.3`, `hardhat-toolbox@^6.1.2`,
 ## Consequences
 
 ### Positive
+
 - The project already uses Ethers v6; the v2 plugin line is the matching one.
 - The 2.x plugin ecosystem is more mature.
 - Migration is surgical: 0 breaking changes for our code beyond OZ v5.
 
 ### Negative
+
 - Hardhat 2 doesn't fully support Solidity 0.8.35's stack-trace features.
   We get a benign warning at compile time.
 - We'll need to migrate to Hardhat 3 in 2027+ if/when the project adds Viem.

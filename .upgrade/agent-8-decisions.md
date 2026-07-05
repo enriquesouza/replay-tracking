@@ -31,14 +31,14 @@ import "@openzeppelin/contracts/utils/Address.sol";
 ```solidity
 // BEFORE:
 constructor() Ownable() Pausable() {
-    _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    _grantRole(ADMIN_ROLE, msg.sender);
+  _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+  _grantRole(ADMIN_ROLE, msg.sender);
 }
 
 // AFTER (v5 requires initialOwner):
 constructor(address initialOwner) Ownable(initialOwner) Pausable() {
-    _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    _grantRole(ADMIN_ROLE, msg.sender);
+  _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+  _grantRole(ADMIN_ROLE, msg.sender);
 }
 ```
 

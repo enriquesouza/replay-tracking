@@ -9,6 +9,7 @@
 ## Why 0.8.35 (not 0.8.24, not 0.8.28)
 
 The project is on `^0.8.24` pragma, which is satisfied by every 0.8.x ≥ 0.8.24. 0.8.35 is the latest stable line and brings:
+
 - Default EVM → `osaka` (Fusaka support)
 - `erc7201()` builtin for namespaced storage
 - `--experimental` flag (cleaner opt-in for in-development features)

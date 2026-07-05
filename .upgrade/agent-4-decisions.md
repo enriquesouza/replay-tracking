@@ -17,15 +17,15 @@ Hardhat 3 ships Viem as the primary provider and removes several Ethers-only API
 
 ## Version matrix (Hardhat 2.x-compatible)
 
-| Package | Version | Why |
-|---|---|---|
-| `hardhat` | 2.28.6 | Latest 2.x. |
-| `@nomicfoundation/hardhat-toolbox` | 6.1.2 | Latest toolbox that supports Hardhat 2. |
-| `@nomicfoundation/hardhat-ethers` | 3.1.3 | v3 line is the Hardhat-2 compatible line (v4 requires Hardhat 3). |
-| `@nomicfoundation/hardhat-verify` | 2.1.0 | For Etherscan / Blockscout verification. |
-| `@nomicfoundation/hardhat-chai-matchers` | 2.1.0 | For `.to.be.revertedWith`, `.to.emit`, etc. |
-| `@nomicfoundation/hardhat-network-helpers` | 1.1.0 | For `loadFixture`. |
-| `@nomicfoundation/hardhat-ignition-ethers` | 0.15.14 | For the Ignition deploy module. |
+| Package                                    | Version | Why                                                               |
+| ------------------------------------------ | ------- | ----------------------------------------------------------------- |
+| `hardhat`                                  | 2.28.6  | Latest 2.x.                                                       |
+| `@nomicfoundation/hardhat-toolbox`         | 6.1.2   | Latest toolbox that supports Hardhat 2.                           |
+| `@nomicfoundation/hardhat-ethers`          | 3.1.3   | v3 line is the Hardhat-2 compatible line (v4 requires Hardhat 3). |
+| `@nomicfoundation/hardhat-verify`          | 2.1.0   | For Etherscan / Blockscout verification.                          |
+| `@nomicfoundation/hardhat-chai-matchers`   | 2.1.0   | For `.to.be.revertedWith`, `.to.emit`, etc.                       |
+| `@nomicfoundation/hardhat-network-helpers` | 1.1.0   | For `loadFixture`.                                                |
+| `@nomicfoundation/hardhat-ignition-ethers` | 0.15.14 | For the Ignition deploy module.                                   |
 
 ## Final `devDependencies` block
 

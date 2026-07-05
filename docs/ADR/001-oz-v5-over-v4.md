@@ -18,6 +18,7 @@ Adopt **OpenZeppelin Contracts v5.6.1** (the latest audited release as of
 ## Consequences
 
 ### Positive
+
 - Single dep, no aliases.
 - v5 has been stable for 2+ years, all known audit issues resolved.
 - Custom errors are now first-class (cheaper gas than `require` strings).
@@ -25,6 +26,7 @@ Adopt **OpenZeppelin Contracts v5.6.1** (the latest audited release as of
 - Storage layout compatible with future upgradeable variants.
 
 ### Negative
+
 - `Ownable` constructor now requires `address initialOwner` (breaking).
 - `security/Pausable` and `security/ReentrancyGuard` moved to `utils/`.
 - We must regenerate the deployed contract's ABI; existing on-chain contracts

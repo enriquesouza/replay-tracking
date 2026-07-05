@@ -17,10 +17,8 @@
     "gas-small-strings": "warn",
     "gas-strict-inequalities": "off",
     "named-parameters-mapping": "warn",
-    "no-array-cindexing": "off",
     "not-rely-on-block-hash": "error",
     "not-rely-on-time": "off",
-    "private-vars-no-leading-underscore": "off",
     "ordering": "warn"
   }
 }

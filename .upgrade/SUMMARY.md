@@ -7,20 +7,20 @@
 
 ## Versions (before → after)
 
-| Tool | Before | After |
-|---|---|---|
-| Solidity | 0.8.24 | **0.8.35** |
-| Hardhat | 2.22.6 | **2.28.6** (still 2.x, not 3) |
-| `@nomicfoundation/hardhat-toolbox` | 5.0.0 | **6.1.2** (Hardhat-2 compatible; toolbox 7 is for Hardhat 3) |
-| `@nomicfoundation/hardhat-ethers` | (bundled in toolbox 5) | **3.1.3** (Hardhat-2 compatible; 4.x is for Hardhat 3) |
-| `@nomicfoundation/hardhat-verify` | — | **2.1.0** (replaces `@nomiclabs/hardhat-etherscan`) |
-| OpenZeppelin | 3 aliases: 4.7.0 / 4.9.6 / 5.0.2 | **5.6.1** (single dep) |
-| Ethers | 6.13.1 | **6.17.0** |
-| Foundry (forge/cast/anvil) | not installed | **1.7.1** |
-| Truffle | not installed | **not installed** (archived Feb 2024) |
-| Ganache | not installed | **not installed** (archived Feb 2024) |
-| Ape (ApeWorx) | not installed | **0.8.50** |
-| Brownie | not installed | **1.22.2** (legacy, opt-in) |
+| Tool                               | Before                           | After                                                        |
+| ---------------------------------- | -------------------------------- | ------------------------------------------------------------ |
+| Solidity                           | 0.8.24                           | **0.8.35**                                                   |
+| Hardhat                            | 2.22.6                           | **2.28.6** (still 2.x, not 3)                                |
+| `@nomicfoundation/hardhat-toolbox` | 5.0.0                            | **6.1.2** (Hardhat-2 compatible; toolbox 7 is for Hardhat 3) |
+| `@nomicfoundation/hardhat-ethers`  | (bundled in toolbox 5)           | **3.1.3** (Hardhat-2 compatible; 4.x is for Hardhat 3)       |
+| `@nomicfoundation/hardhat-verify`  | —                                | **2.1.0** (replaces `@nomiclabs/hardhat-etherscan`)          |
+| OpenZeppelin                       | 3 aliases: 4.7.0 / 4.9.6 / 5.0.2 | **5.6.1** (single dep)                                       |
+| Ethers                             | 6.13.1                           | **6.17.0**                                                   |
+| Foundry (forge/cast/anvil)         | not installed                    | **1.7.1**                                                    |
+| Truffle                            | not installed                    | **not installed** (archived Feb 2024)                        |
+| Ganache                            | not installed                    | **not installed** (archived Feb 2024)                        |
+| Ape (ApeWorx)                      | not installed                    | **0.8.50**                                                   |
+| Brownie                            | not installed                    | **1.22.2** (legacy, opt-in)                                  |
 
 ## What was installed
 
@@ -33,18 +33,18 @@
 
 ## What was changed
 
-| Agent | File(s) | Change |
-|---|---|---|
-| 1 — research | `.upgrade/agent-1-research.md` | Toolchain version matrix |
-| 2 — solidity | `hardhat.config.js`, `.solhint.json` | Bumped compiler to 0.8.35, EVM `osaka` |
-| 3 — OZ | `package.json` | Single `@openzeppelin/contracts@5.6.1` |
-| 4 — Hardhat | `package.json`, `hardhat.config.js` | Bumped Hardhat to 2.26+, toolbox 7, verify 3 |
-| 5 — Truffle | `.upgrade/agent-5-decisions.md` | Documented the skip + the alternatives |
-| 6 — Foundry | `foundry.toml`, `remappings.txt`, scripts | New local simulator |
-| 7 — Python | `ape-config.yaml`, `brownie-config.yaml`, `pyproject.toml`, `requirements.txt`, `scripts/python-setup.sh` | New Python simulators |
-| 8 — contracts | `contracts/ReplayTrackingContractV2.sol`, deleted `contracts/ReplayTrackingContractV3_flattened.sol` | OZ v4→v5 migration + new constructor |
-| 9 — deploy | `scripts/deploy-contract-*.js`, `scripts/verify-compile.sh`, `server/abi.json` | New `initialOwner` arg, ethers v6 fix, anvil-aware deploy |
-| 10 — verify | `tests/hardhat/ReplayTracking.test.js`, `.upgrade/SUMMARY.md`, `.upgrade/agent-10-decisions.md`, `README.md` | New contract test (11 passing), final docs |
+| Agent         | File(s)                                                                                                      | Change                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| 1 — research  | `.upgrade/agent-1-research.md`                                                                               | Toolchain version matrix                                  |
+| 2 — solidity  | `hardhat.config.js`, `.solhint.json`                                                                         | Bumped compiler to 0.8.35, EVM `osaka`                    |
+| 3 — OZ        | `package.json`                                                                                               | Single `@openzeppelin/contracts@5.6.1`                    |
+| 4 — Hardhat   | `package.json`, `hardhat.config.js`                                                                          | Bumped Hardhat to 2.26+, toolbox 7, verify 3              |
+| 5 — Truffle   | `.upgrade/agent-5-decisions.md`                                                                              | Documented the skip + the alternatives                    |
+| 6 — Foundry   | `foundry.toml`, `remappings.txt`, scripts                                                                    | New local simulator                                       |
+| 7 — Python    | `ape-config.yaml`, `brownie-config.yaml`, `pyproject.toml`, `requirements.txt`, `scripts/python-setup.sh`    | New Python simulators                                     |
+| 8 — contracts | `contracts/ReplayTrackingContractV2.sol`, deleted `contracts/ReplayTrackingContractV3_flattened.sol`         | OZ v4→v5 migration + new constructor                      |
+| 9 — deploy    | `scripts/deploy-contract-*.js`, `scripts/verify-compile.sh`, `server/abi.json`                               | New `initialOwner` arg, ethers v6 fix, anvil-aware deploy |
+| 10 — verify   | `tests/hardhat/ReplayTracking.test.js`, `.upgrade/SUMMARY.md`, `.upgrade/agent-10-decisions.md`, `README.md` | New contract test (11 passing), final docs                |
 
 ## How to use the new toolchain
 

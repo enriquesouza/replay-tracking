@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# Husky pre-commit hook — Bun-aware.
+# If `bunx` is on the PATH, use it; otherwise fall back to `npx`.
+if command -v bunx >/dev/null 2>&1; then
+  bunx lint-staged
+else
+  npx lint-staged
+fi

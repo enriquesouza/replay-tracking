@@ -4,11 +4,11 @@
 
 Both `truffle` and `ganache` (the original Truffle Suite packages) were **archived on Feb 26, 2024** by ConsenSys. They no longer receive security or compatibility updates.
 
-| Package | Last release | Status |
-|---|---|---|
-| `truffle` | v5.11.5 (Sep 2023) | **Archived** — no Node 20+ support, no Solidity 0.8.20+ support, no OZ v5 support. |
-| `ganache` (Truffle Suite) | v7.9.0 (Jul 2023) | **Archived** — final EVM is `shanghai`. |
-| `ganache` (npm) | The npm package is the Truffle Suite one. | Same archive. |
+| Package                   | Last release                              | Status                                                                             |
+| ------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------- |
+| `truffle`                 | v5.11.5 (Sep 2023)                        | **Archived** — no Node 20+ support, no Solidity 0.8.20+ support, no OZ v5 support. |
+| `ganache` (Truffle Suite) | v7.9.0 (Jul 2023)                         | **Archived** — final EVM is `shanghai`.                                            |
+| `ganache` (npm)           | The npm package is the Truffle Suite one. | Same archive.                                                                      |
 
 ## What the user gets instead
 

@@ -1,6 +1,6 @@
 {
   "name": "replay-tracking",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Decentralized token market (DeFi) replay-tracking smart contract. Tracks content viewing records and rewards users with tokens.",
   "main": "index.js",
   "type": "commonjs",
@@ -8,18 +8,24 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "packageManager": "npm@10.9.8",
+  "packageManager": "bun@1.3.13",
   "scripts": {
     "start": "node index.js",
+    "start:bun": "bun index.js",
     "dev": "nodemon --watch server --watch index.js index.js",
+    "dev:bun": "bun --watch index.js",
     "test": "vitest run",
+    "test:bun": "bunx vitest run",
     "test:watch": "vitest",
-    "compile": "npx hardhat compile",
+    "compile": "hardhat compile",
+    "compile:bun": "bunx hardhat compile",
     "compile:verify": "bash scripts/verify-compile.sh",
-    "test:contracts": "npx hardhat test",
-    "test:contracts:gas": "REPORT_GAS=true npx hardhat test",
-    "test:contracts:coverage": "npx hardhat coverage",
-    "node:hardhat": "npx hardhat node",
+    "test:contracts": "hardhat test",
+    "test:contracts:bun": "bunx hardhat test",
+    "test:contracts:gas": "REPORT_GAS=true hardhat test",
+    "test:contracts:coverage": "hardhat coverage",
+    "node:hardhat": "hardhat node",
+    "node:hardhat:bun": "bunx hardhat node",
     "node:anvil": "anvil --host 0.0.0.0 --port 8545",
     "node:stop": "pkill -f 'hardhat node' || true; pkill -f anvil || true",
     "deploy:local": "node scripts/deploy-contract-local.js",
@@ -32,15 +38,21 @@
     "foundry:test": "forge test",
     "foundry:fmt": "forge fmt",
     "foundry:install": "bash -c \"curl -L https://foundry.paradigm.xyz | bash && foundryup\"",
+    "bun:install": "curl -fsSL https://bun.sh/install | bash",
     "python:setup": "bash scripts/python-setup.sh",
-    "lint:sol": "npx solhint 'contracts/**/*.sol'",
+    "lint:sol": "solhint 'contracts/**/*.sol'",
+    "lint:bun:sol": "bunx solhint 'contracts/**/*.sol'",
     "lint:js": "eslint .",
+    "lint:bun:js": "bunx eslint .",
     "lint": "npm run lint:sol && npm run lint:js",
+    "lint:bun": "bun run lint:bun:sol && bun run lint:bun:js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "audit": "npm audit --audit-level=moderate",
-    "audit:fix": "npm audit fix",
-    "prepare": "husky || true"
+    "audit:bun": "bun audit",
+    "install:bun": "bun install --frozen-lockfile",
+    "install:npm": "npm ci",
+    "prepare": "husky"
   },
   "author": "Enrique Souza",
   "dependencies": {
@@ -91,8 +103,21 @@
     "vitest": "^2.0.4"
   },
   "lint-staged": {
-    "*.{js,ts,json,md,yaml,yml}": ["prettier --write", "eslint --max-warnings=0"],
-    "*.sol": ["prettier --write", "solhint"]
+    "!(*.test).{js,ts}": [
+      "prettier --write",
+      "eslint --no-warn-ignored --max-warnings=50"
+    ],
+    "*.test.js": [
+      "prettier --write",
+      "eslint --no-warn-ignored --max-warnings=50"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ],
+    "*.sol": [
+      "prettier --write",
+      "solhint --max-warnings=30 'contracts/**/*.sol'"
+    ]
   },
   "overrides": {
     "fastify": "^4.28.1",

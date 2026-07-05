@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import {ReplayLibrary} from "./ReplayLibrary.sol";
+import { ReplayLibrary } from "./ReplayLibrary.sol";
 
 /**
  * @title  ReplayTrackingContractV3
@@ -178,9 +178,7 @@ contract ReplayTrackingContractV3 is Ownable, Pausable, AccessControl, Reentranc
             ReplayLibrary.Transaction calldata txn = transactions[i];
             _validateTransaction(txn);
 
-            bytes32 key = ReplayLibrary.encodeKey(
-                txn.userId, txn.day, txn.month, txn.year, txn.assetId
-            );
+            bytes32 key = ReplayLibrary.encodeKey(txn.userId, txn.day, txn.month, txn.year, txn.assetId);
 
             // Register the key the first time it appears.
             if (_transactionKeys.add(key)) {
@@ -262,9 +260,7 @@ contract ReplayTrackingContractV3 is Ownable, Pausable, AccessControl, Reentranc
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Returns the number of recorded transactions for `userId`.
-    function getUserHistories(
-        string calldata userId
-    ) external view returns (ReplayLibrary.UserHistory[] memory) {
+    function getUserHistories(string calldata userId) external view returns (ReplayLibrary.UserHistory[] memory) {
         _checkStringLength("userId", userId);
         bytes32 userKey = keccak256(bytes(userId));
         return userHistories[userKey];
@@ -318,10 +314,7 @@ contract ReplayTrackingContractV3 is Ownable, Pausable, AccessControl, Reentranc
         for (uint256 i = 0; i < keyCount; ++i) {
             ReplayLibrary.Transaction[] storage bucket = dailyTransactions[_transactionKeys.at(i)];
             if (bucket.length == 0) continue;
-            if (
-                keccak256(bytes(bucket[0].userId)) == userKey &&
-                keccak256(bytes(bucket[0].assetId)) == assetKey
-            ) {
+            if (keccak256(bytes(bucket[0].userId)) == userKey && keccak256(bytes(bucket[0].assetId)) == assetKey) {
                 total += bucket.length;
             }
         }
@@ -331,10 +324,8 @@ contract ReplayTrackingContractV3 is Ownable, Pausable, AccessControl, Reentranc
         for (uint256 i = 0; i < keyCount; ++i) {
             ReplayLibrary.Transaction[] storage bucket = dailyTransactions[_transactionKeys.at(i)];
             if (bucket.length == 0) continue;
-            if (
-                keccak256(bytes(bucket[0].userId)) != userKey ||
-                keccak256(bytes(bucket[0].assetId)) != assetKey
-            ) continue;
+            if (keccak256(bytes(bucket[0].userId)) != userKey || keccak256(bytes(bucket[0].assetId)) != assetKey)
+                continue;
 
             for (uint256 j = 0; j < bucket.length; ++j) {
                 out_[cursor++] = bucket[j];

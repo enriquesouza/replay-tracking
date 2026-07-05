@@ -15,11 +15,11 @@
 
 There are three things to "push to prod":
 
-| Layer | What it is | How to push |
-|---|---|---|
-| **(a) Code** | The repository on `main` | `git push` |
-| **(b) Contract** | The `ReplayTrackingContractV3` instance on a chain | `npm run deploy:prod` (or `deploy:verify`) |
-| **(c) API** | The Fastify server reachable at a hostname | `docker run …` or your hosting platform's deploy |
+| Layer            | What it is                                         | How to push                                      |
+| ---------------- | -------------------------------------------------- | ------------------------------------------------ |
+| **(a) Code**     | The repository on `main`                           | `git push`                                       |
+| **(b) Contract** | The `ReplayTrackingContractV3` instance on a chain | `npm run deploy:prod` (or `deploy:verify`)       |
+| **(c) API**      | The Fastify server reachable at a hostname         | `docker run …` or your hosting platform's deploy |
 
 **(a) and (c) are entirely under your control.** **(b) requires a funded
 deployer wallet** — the AI assistant does NOT have access to your private
@@ -78,6 +78,7 @@ build on every push.
 ### 2.3. Deploy the contract to prod (5 minutes)
 
 > ⚠️ This step requires:
+>
 > 1. A funded deployer wallet (private key + ETH for gas).
 > 2. The chain's RPC URL.
 > 3. (Optional, for `deploy:verify`) An Etherscan/Blockscout API key.
@@ -257,32 +258,32 @@ cast send 0xNewAddress "pause()" --rpc-url $RPC_URL --private-key $DEPLOYER_PRIV
 
 ## 3. What changed since v1
 
-| Layer | v1 (2026-07-05 morning) | v2.1.0 (this release) |
-|---|---|---|
-| Solidity | 0.8.24, OZ v4 | 0.8.35, OZ v5.6.1 |
-| Contract hardening | None | `ReentrancyGuard`, `whenNotPaused`, custom errors, `EnumerableSet` for `transactionKeys` |
-| `nonces` mapping | Defined but unused | Actually increments, emitted in events |
-| Constructor | `Ownable()` (deprecated) | `Ownable(initialOwner)` (OZ v5 requirement) |
-| Storage | Unbounded `bytes32[]` (DoS risk) | `EnumerableSet.Bytes32Set` + 50-slot `__gap` |
-| Tests | 11 | 32 (incl. fuzz + invariant) |
-| Server | `xss-clean` (broken on Node 18+), no health, no request IDs | `sanitize-html`, /health, /ready, request IDs, structured logging |
-| Auth | Plain `!==` API key compare | Constant-time compare + optional JWT |
-| CORS | Always `*` | Pinned allowlist |
-| CSP | None | Helmet `default-src 'none'` |
-| Rate limit | Global 100/min | Global + per-route + allowlist |
-| Body limit | None | 1 MiB |
-| Schema validation | None | JSON Schema on every route |
-| Auth in dev | Bypassed | Still bypassed (NODE_ENV check) |
-| Auth in prod | `!==` | Constant-time + JWT optional |
-| CI | None | GitHub Actions: install → audit → lint → format → compile → test → forge |
-| Dependabot | None | Weekly |
-| Linting | solhint only | solhint + ESLint flat config + Prettier + Solhint + commitlint |
-| Pre-commit | None | husky + lint-staged |
-| Docs | README only | README + Architecture + Security + Runbook + Deployment + Contributing + Changelog + 3 ADRs + OpenAPI + LICENSE |
-| License | None | MIT |
-| Foundry | 1.7.1 installed | 1.7.1 installed |
-| Truffle / Ganache | Not installed | Not installed (still archived) |
-| Ape / Brownie | Installed | Installed |
+| Layer              | v1 (2026-07-05 morning)                                     | v2.1.0 (this release)                                                                                           |
+| ------------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Solidity           | 0.8.24, OZ v4                                               | 0.8.35, OZ v5.6.1                                                                                               |
+| Contract hardening | None                                                        | `ReentrancyGuard`, `whenNotPaused`, custom errors, `EnumerableSet` for `transactionKeys`                        |
+| `nonces` mapping   | Defined but unused                                          | Actually increments, emitted in events                                                                          |
+| Constructor        | `Ownable()` (deprecated)                                    | `Ownable(initialOwner)` (OZ v5 requirement)                                                                     |
+| Storage            | Unbounded `bytes32[]` (DoS risk)                            | `EnumerableSet.Bytes32Set` + 50-slot `__gap`                                                                    |
+| Tests              | 11                                                          | 32 (incl. fuzz + invariant)                                                                                     |
+| Server             | `xss-clean` (broken on Node 18+), no health, no request IDs | `sanitize-html`, /health, /ready, request IDs, structured logging                                               |
+| Auth               | Plain `!==` API key compare                                 | Constant-time compare + optional JWT                                                                            |
+| CORS               | Always `*`                                                  | Pinned allowlist                                                                                                |
+| CSP                | None                                                        | Helmet `default-src 'none'`                                                                                     |
+| Rate limit         | Global 100/min                                              | Global + per-route + allowlist                                                                                  |
+| Body limit         | None                                                        | 1 MiB                                                                                                           |
+| Schema validation  | None                                                        | JSON Schema on every route                                                                                      |
+| Auth in dev        | Bypassed                                                    | Still bypassed (NODE_ENV check)                                                                                 |
+| Auth in prod       | `!==`                                                       | Constant-time + JWT optional                                                                                    |
+| CI                 | None                                                        | GitHub Actions: install → audit → lint → format → compile → test → forge                                        |
+| Dependabot         | None                                                        | Weekly                                                                                                          |
+| Linting            | solhint only                                                | solhint + ESLint flat config + Prettier + Solhint + commitlint                                                  |
+| Pre-commit         | None                                                        | husky + lint-staged                                                                                             |
+| Docs               | README only                                                 | README + Architecture + Security + Runbook + Deployment + Contributing + Changelog + 3 ADRs + OpenAPI + LICENSE |
+| License            | None                                                        | MIT                                                                                                             |
+| Foundry            | 1.7.1 installed                                             | 1.7.1 installed                                                                                                 |
+| Truffle / Ganache  | Not installed                                               | Not installed (still archived)                                                                                  |
+| Ape / Brownie      | Installed                                                   | Installed                                                                                                       |
 
 See [.upgrade/SUMMARY.md](../.upgrade/SUMMARY.md) (v1 → v2.0.0) and
 [.upgrade/v2/SUMMARY.md](../.upgrade/v2/SUMMARY.md) (v2.0.0 → v2.1.0) for
@@ -307,14 +308,14 @@ curl https://api.example.com/health
 See [RUNBOOK.md](RUNBOOK.md) for the full list of common incidents and how
 to recover. Quick reference:
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| 503 `contract_not_configured` | `CONTRACT_ADDRESS` not set | Set it, restart |
-| 401 in prod | Wrong `X-Api-Key` | Check `.env`, restart |
-| 429 | Rate limit | Increase `RATE_LIMIT_MAX` or add to allowlist |
-| 400 `BatchTooLarge(101,100)` | Caller sent 101 records | Caller must batch into ≤100 |
-| Transaction reverted on chain | Admin tried to call while paused | `unpause()` first |
-| Container won't start | Missing env var | `docker logs replay-tracking` |
+| Symptom                       | Likely cause                     | Fix                                           |
+| ----------------------------- | -------------------------------- | --------------------------------------------- |
+| 503 `contract_not_configured` | `CONTRACT_ADDRESS` not set       | Set it, restart                               |
+| 401 in prod                   | Wrong `X-Api-Key`                | Check `.env`, restart                         |
+| 429                           | Rate limit                       | Increase `RATE_LIMIT_MAX` or add to allowlist |
+| 400 `BatchTooLarge(101,100)`  | Caller sent 101 records          | Caller must batch into ≤100                   |
+| Transaction reverted on chain | Admin tried to call while paused | `unpause()` first                             |
+| Container won't start         | Missing env var                  | `docker logs replay-tracking`                 |
 
 ### 4.3. Rotating secrets
 
@@ -344,6 +345,7 @@ the new address.
 If you need upgradeability in the future, the contract has a `uint256[50]
 private __gap;` reserved for future state variables. To go upgradeable,
 you'd need to:
+
 1. Migrate the contract to `@openzeppelin/contracts-upgradeable`.
 2. Wrap it in an `ERC1967Proxy`.
 3. Add an `initialize(address initialOwner)` function (the constructor
@@ -373,12 +375,12 @@ you'd need to:
 
 ## 6. Where to get help
 
-| Question | Where |
-|---|---|
-| How does the code work? | [README.md](../README.md), [docs/ARCHITECTURE.md](ARCHITECTURE.md) |
-| What changed? | [docs/CHANGELOG.md](CHANGELOG.md), [.upgrade/v2/SUMMARY.md](../.upgrade/v2/SUMMARY.md) |
-| How do I deploy? | This document, [docs/DEPLOYMENT.md](DEPLOYMENT.md) |
-| Something's broken | [docs/RUNBOOK.md](RUNBOOK.md) |
-| Security issue | [SECURITY.md](../SECURITY.md) |
-| How do I contribute? | [docs/CONTRIBUTING.md](CONTRIBUTING.md) |
-| Why this tech choice? | [docs/ADR/](ADR/) |
+| Question                | Where                                                                                  |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| How does the code work? | [README.md](../README.md), [docs/ARCHITECTURE.md](ARCHITECTURE.md)                     |
+| What changed?           | [docs/CHANGELOG.md](CHANGELOG.md), [.upgrade/v2/SUMMARY.md](../.upgrade/v2/SUMMARY.md) |
+| How do I deploy?        | This document, [docs/DEPLOYMENT.md](DEPLOYMENT.md)                                     |
+| Something's broken      | [docs/RUNBOOK.md](RUNBOOK.md)                                                          |
+| Security issue          | [SECURITY.md](../SECURITY.md)                                                          |
+| How do I contribute?    | [docs/CONTRIBUTING.md](CONTRIBUTING.md)                                                |
+| Why this tech choice?   | [docs/ADR/](ADR/)                                                                      |

@@ -9,7 +9,11 @@ const buildApp = async (_opts = {}) => {
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL || (process.env.NODE_ENV === "production" ? "info" : "debug"),
-      redact: ["req.headers.authorization", "req.headers['x-api-key']", 'res.headers["set-cookie"]'],
+      redact: [
+        "req.headers.authorization",
+        "req.headers['x-api-key']",
+        'res.headers["set-cookie"]',
+      ],
     },
     disableRequestLogging: false,
     trustProxy: process.env.TRUST_PROXY === "true",

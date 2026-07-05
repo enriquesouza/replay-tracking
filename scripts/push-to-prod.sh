@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/push-to-prod.sh
-# Final step: push the v2.1.0 commit to GitHub and prepare the on-chain deploy.
+# Final step: push the v2.2.0 (Bun switch) commit to GitHub and prepare the on-chain deploy.
 #
 # Run this yourself (it requires your SSH key passphrase and your
 # DEPLOYER_PRIVATE_KEY — both of which the AI assistant cannot supply).

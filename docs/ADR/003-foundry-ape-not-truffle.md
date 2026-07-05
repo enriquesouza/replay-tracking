@@ -18,6 +18,7 @@ Install **Foundry 1.7.1** (forge, cast, anvil, chisel) and **Ape 0.8.50**
 ## Consequences
 
 ### Positive
+
 - Foundry's anvil is a high-performance EVM that supports EIP-1559, EIP-4844,
   and the latest EVM upgrades.
 - Foundry's `forge test` is significantly faster than Hardhat's mocha.
@@ -25,6 +26,7 @@ Install **Foundry 1.7.1** (forge, cast, anvil, chisel) and **Ape 0.8.50**
 - We support two languages (Solidity via Hardhat, Python via Ape) for tests.
 
 ### Negative
+
 - Two compilers to maintain (solc-js for Hardhat, solc binary for Forge).
 - Foundry's Rust toolchain is a heavier system dependency (~500 MB).
 

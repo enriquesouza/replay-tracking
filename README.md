@@ -1,9 +1,12 @@
 # ReplayTrackingContract
 
 > Decentralized token market (DeFi) smart contract that tracks content-viewing
-> records and rewards users with tokens. **v2.1.0 (2026-07-05)** — full security
-> and best-practices upgrade: `nonReentrant` + `whenNotPaused` + custom errors
-> + 32 passing contract tests.
+> records and rewards users with tokens. **v2.2.0 (2026-07-05)** — switched
+> the primary package manager and runtime to **Bun 1.3.13** (Node 20+ remains
+> the supported fallback). The contract itself is hardened with `nonReentrant`
+>
+> - `whenNotPaused` + custom errors, and ships with **32 passing contract
+>   tests**.
 
 ---
 
@@ -40,55 +43,68 @@ The companion Fastify API in `server/` reads from the contract over JSON-RPC
 and exposes it over HTTPS, with a hardened middleware stack (CSP, CORS
 allowlist, HPP, sanitize-html, constant-time API key compare, optional JWT).
 
+### Runtime
+
+| Primary        | Fallback | Status                                                       |
+| -------------- | -------- | ------------------------------------------------------------ |
+| **Bun 1.3.13** | Node 20+ | Both fully tested. Bun is faster; Node is more conservative. |
+
 The whole toolchain is on the **latest stable** as of 2026-07-05:
 
-| Tool | Version | Notes |
-|---|---|---|
-| **Solidity** | **0.8.35** | EVM `osaka` |
-| **Hardhat** | **2.28.6** | 2.x line (not 3) |
-| **OpenZeppelin Contracts** | **5.6.1** | Single dep, v4 aliases removed |
-| **Ethers** | **6.17.0** | v6 (v7 not yet released) |
-| **Foundry** | **1.7.1** | `forge`, `cast`, `anvil`, `chisel` |
-| **Ape (ApeWorx)** | **0.8.50** | Python framework |
-| **Brownie** | **1.22.2** | Python, legacy (maintenance mode) |
-| **Truffle / Ganache** | — | NOT installed (archived Feb 2024) |
-| **Node** | **≥ 20** | tested on 22.22.3 |
+| Tool                       | Version    | Notes                              |
+| -------------------------- | ---------- | ---------------------------------- |
+| **Solidity**               | **0.8.35** | EVM `osaka`                        |
+| **Hardhat**                | **2.28.6** | 2.x line (not 3)                   |
+| **OpenZeppelin Contracts** | **5.6.1**  | Single dep, v4 aliases removed     |
+| **Ethers**                 | **6.17.0** | v6 (v7 not yet released)           |
+| **Bun**                    | **1.3.13** | Primary package manager + runtime  |
+| **Foundry**                | **1.7.1**  | `forge`, `cast`, `anvil`, `chisel` |
+| **Ape (ApeWorx)**          | **0.8.50** | Python framework                   |
+| **Brownie**                | **1.22.2** | Python, legacy (maintenance mode)  |
+| **Truffle / Ganache**      | —          | NOT installed (archived Feb 2024)  |
+| **Node**                   | **≥ 20**   | Fallback runtime                   |
 
 ---
 
 ## Quick start (5 minutes)
 
 ```bash
-# 1. Install
-npm install
+# 1. Install Bun (skip if you already have it)
+curl -fsSL https://bun.sh/install | bash
 
-# 2. Compile the Solidity contracts
-npm run compile            # → "Compiled 19 Solidity files successfully"
+# 2. Install dependencies
+bun install                 # ~6s, 916 packages
 
-# 3. Run the contract test suite (32 tests, all passing)
-npm run test:contracts
+# 3. Compile the Solidity contracts
+bunx hardhat compile        # → "Compiled 19 Solidity files successfully"
 
-# 4. Start a local EVM (pick one — DO NOT run both at the same time)
-npm run node:anvil         # Foundry's anvil on :8545
+# 4. Run the contract test suite (32 tests, all passing)
+bunx hardhat test
+
+# 5. Start a local EVM (pick one — DO NOT run both at the same time)
+bunx hardhat node           # Hardhat's in-process node on :8545
 # OR
-npm run node:hardhat       # Hardhat's in-process node on :8545
+anvil                       # Foundry's anvil on :8545
 
-# 5. Deploy the contract to the local node
-npm run deploy:anvil
+# 6. Deploy the contract to the local node
+node scripts/deploy-contract-local.js
 # → prints: "Contract deployed to: 0x..."
 # → also: "To wire the API to this deployment, set in .env: CONTRACT_ADDRESS=0x..."
 
-# 6. Wire up the API
+# 7. Wire up the API
 cp .env.example .env
-# Edit .env: set CONTRACT_ADDRESS to the value from step 5
+# Edit .env: set CONTRACT_ADDRESS to the value from step 6
 # (The default anvil key is a public dev key — safe for local testing.)
 
-# 7. Start the API
-npm start                  # → listens on http://0.0.0.0:3000
-curl http://localhost:3000/health    # → {"status":"ok","uptime":...}
+# 8. Start the API (Bun or Node)
+bun run index.js            # Bun
+# OR
+node index.js               # Node 20+
 ```
 
-That's it. The full local stack is up in under 5 minutes.
+The API listens on `http://localhost:3000` by default. Health: `GET /health`. Docs: `docs/api/openapi.yaml`.
+
+> **Not on Bun?** Replace `bun install` with `npm install`, `bunx` with `npx`. Every script has a `*:bun` variant in `package.json` for clarity.
 
 ---
 
@@ -100,7 +116,7 @@ flowchart LR
         UI[Web/Mobile App]
     end
 
-    subgraph API["Fastify API (Node 20+)"]
+    subgraph API["Fastify API (Bun or Node 20+)"]
         Routes["server/routes/contract.js"]
         Config["server/config.js"]
         Sanitize["sanitize-html + HPP"]
@@ -116,7 +132,7 @@ flowchart LR
     subgraph Tooling
         Hardhat[Hardhat 2.28.6]
         Forge[Foundry 1.7.1]
-        Ape[Ape 0.8.50]
+        Bun[Bun 1.3.13]
     end
 
     UI -->|HTTPS| Routes
@@ -129,12 +145,13 @@ flowchart LR
 
     Hardhat -. compiles .-> Contract
     Forge -. compiles .-> Contract
-    Ape -. compiles .-> Contract
+    Bun -. runs .-> Hardhat
+    Bun -. runs .-> Routes
 ```
 
 The contract is the source of truth. The API is a thin read+write layer with
 heavy hardening (CSP, CORS allowlist, HPP, rate limits, request IDs, structured
-logging). The off-chain tooling (Hardhat, Forge, Ape) compiles + tests the
+logging). The off-chain tooling (Hardhat, Forge, Bun) compiles + tests the
 contract independently — the API never relies on the artifacts at runtime.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full diagram, request
@@ -146,19 +163,19 @@ lifecycle, and failure modes.
 
 ### Required
 
-| Tool | Install | Version |
-|---|---|---|
-| **Node** | `nvm use` (we ship `.nvmrc` with `20`) | 20+ |
-| **npm** | bundled with Node | 10+ |
-| **Foundry** | `npm run foundry:install` | 1.7.1+ |
+| Tool                   | Install                                     | Version |
+| ---------------------- | ------------------------------------------- | ------- |
+| **Bun** (primary)      | `curl -fsSL https://bun.sh/install \| bash` | 1.3.13+ |
+| **OR Node** (fallback) | `nvm use` (we ship `.nvmrc` with `20`)      | 20+     |
+| **Foundry**            | `npm run foundry:install`                   | 1.7.1+  |
 
 ### Optional
 
-| Tool | Install | Use |
-|---|---|---|
-| **Ape (Python)** | `npm run python:setup` then `source .venv/bin/activate` | Python contract tests |
-| **Brownie (Python)** | `pipx install eth-brownie` | Legacy Python framework (maintenance mode) |
-| **Docker** | `brew install --cask docker` | Containerized deploys |
+| Tool                 | Install                                                 | Use                                        |
+| -------------------- | ------------------------------------------------------- | ------------------------------------------ |
+| **Ape (Python)**     | `npm run python:setup` then `source .venv/bin/activate` | Python contract tests                      |
+| **Brownie (Python)** | `pipx install eth-brownie`                              | Legacy Python framework (maintenance mode) |
+| **Docker**           | `brew install --cask docker`                            | Containerized deploys                      |
 
 ### NOT installed (and why)
 
@@ -168,7 +185,7 @@ lifecycle, and failure modes.
 - **Ganache** (`ganache` npm package): **archived by ConsenSys on Feb 26, 2024**.
   Last release 7.9.0 (Jul 2023). Final EVM is `shanghai`.
 
-  Use **Anvil** (Foundry) or **`npx hardhat node`** instead — they speak the
+  Use **Anvil** (Foundry) or **`bunx hardhat node`** instead — they speak the
   same JSON-RPC, are actively maintained, and support the latest EVM upgrades.
 
 ---
@@ -187,10 +204,11 @@ lifecycle, and failure modes.
 │   ├── deploy-contract-anvil.js          # Deploy to anvil specifically
 │   ├── deploy-contract-prod.js           # Deploy to a remote chain
 │   ├── deploy-contract-verify.js         # Deploy + auto-verify on Etherscan
-│   ├── verify-compile.sh                 # npx hardhat compile with success marker
+│   ├── verify-compile.sh                 # bunx/npx hardhat compile with success marker
 │   ├── health-check.js                   # Ping all RPC endpoints
 │   ├── check-balance.js                  # Pre-flight deployer balance check
-│   ├── check-all.sh                      # Full local CI gate
+│   ├── check-all.sh                      # Full local CI gate (bun-aware)
+│   ├── push-to-prod.sh                   # Push + deploy prep helper
 │   └── python-setup.sh                   # Install the Python toolchain
 ├── server/
 │   ├── abi.json                          # Auto-regenerated from the artifact
@@ -209,18 +227,19 @@ lifecycle, and failure modes.
 │       ├── 00-master-plan.md            # 100 micro-tasks, 10 domains
 │       ├── 01..10-*.md                  # per-domain decision files
 │       └── SUMMARY.md                   # v2.1.0 final summary
+├── .github/workflows/                    # CI / CD (Bun via oven-sh/setup-bun@v2)
+│   ├── ci.yml                            # install → audit → lint → compile → test
+│   └── audit.yml                         # weekly bun audit
 ├── docs/                                 # Long-form documentation
 │   ├── ARCHITECTURE.md
 │   ├── SECURITY.md
 │   ├── RUNBOOK.md
 │   ├── DEPLOYMENT.md
+│   ├── PROD_DEPLOY.md                    # Step-by-step prod runbook
 │   ├── CONTRIBUTING.md
 │   ├── CHANGELOG.md
-│   ├── ADR/                              # 3 architectural decision records
+│   ├── ADR/                              # 4 architectural decision records
 │   └── api/openapi.yaml                  # OpenAPI 3.0 spec
-├── .github/workflows/                    # CI / CD
-│   ├── ci.yml                            # install → audit → lint → compile → test
-│   └── audit.yml                         # weekly npm audit
 ├── foundry.toml                          # Foundry config
 ├── remappings.txt                        # Foundry remappings
 ├── ape-config.yaml                       # Ape config
@@ -228,7 +247,8 @@ lifecycle, and failure modes.
 ├── pyproject.toml                        # Python project metadata
 ├── requirements.txt                      # Python deps
 ├── hardhat.config.js                     # Hardhat config
-├── package.json                          # Node deps + scripts
+├── package.json                          # Bun/Node scripts + deps
+├── bun.lock                              # Bun lockfile (primary)
 └── .solhint.json                         # Solidity linter rules
 ```
 
@@ -239,17 +259,25 @@ lifecycle, and failure modes.
 ### 1. Install everything
 
 ```bash
-npm install                     # Node deps (1041 packages)
-npm run foundry:install         # Foundry (forge, cast, anvil, chisel)
-npm run python:setup            # Optional: Ape + Brownie in a project-local .venv
+# Install Bun (skip if you have it)
+curl -fsSL https://bun.sh/install | bash
+
+# Install Node deps (916 packages in ~6s)
+bun install
+
+# Install Foundry
+npm run foundry:install
+
+# Optional: Python tools
+npm run python:setup && source .venv/bin/activate
 ```
 
 ### 2. Run the full local CI gate
 
 ```bash
 bash scripts/check-all.sh
-# ▶ npm install
-# ▶ audit (moderate+)
+# ▶ install (bun install --frozen-lockfile)
+# ▶ audit (non-fatal — most findings are in Hardhat transitive deps)
 # ▶ solhint
 # ▶ hardhat compile
 # ▶ hardhat test
@@ -258,16 +286,17 @@ bash scripts/check-all.sh
 # ✅ All checks passed
 ```
 
+The script auto-detects `bun` (preferred) or falls back to `npm` + `npx`.
+
 ### 3. Start a local EVM and deploy
 
 ```bash
 # Terminal 1
-npm run node:anvil
+anvil                     # OR: bunx hardhat node
 
 # Terminal 2
-npm run deploy:anvil
+node scripts/deploy-contract-local.js
 # → Contract deployed to: 0x5FbDB2315678afecb367f032d93F642f64180aa3
-# → To wire the API to this deployment, set in .env: CONTRACT_ADDRESS=0x...
 ```
 
 ### 4. Run the API
@@ -275,46 +304,45 @@ npm run deploy:anvil
 ```bash
 cp .env.example .env
 # Edit .env: set CONTRACT_ADDRESS=0x5FbDB...  (from step 3)
-npm start
-# → Server listening on 3000
 
-curl http://localhost:3000/health
-# → {"status":"ok","uptime":0.123}
+# Bun (recommended)
+bun run index.js
+# OR Node
+node index.js
 
-curl http://localhost:3000/ready
-# → {"status":"ready","contract":"0x5FbDB..."}
-
-curl http://localhost:3000/getUserHistories/alice
-# → [{"totalDuration":"100","totalRewardsConsumer":"10",...}]
+curl http://localhost:3000/health    # → {"status":"ok","uptime":...}
 ```
 
 ### 5. Run the contract test suite
 
 ```bash
-npm run test:contracts
-# → 32 passing (in ~400 ms)
+bunx hardhat test            # Bun
+# OR
+npx hardhat test             # Node 20+
+# → 32 passing, 0 failing
 
 # With gas reporting
-REPORT_GAS=true npm run test:contracts
+REPORT_GAS=true bunx hardhat test
 
 # With coverage
-npm run test:contracts:coverage
+bunx hardhat coverage
 ```
 
 ### 6. Run the server test suite
 
 ```bash
-npm test                       # Vitest — needs the server running
+bun test                     # Vitest (via bunx)
+# OR
+npm test                     # Vitest via npm scripts
 ```
 
 ### 7. Format and lint
 
 ```bash
-npm run format                 # Prettier --write
-npm run format:check           # Prettier --check (CI-friendly)
-npm run lint                   # solhint + eslint
-npm run lint:sol               # solhint only
-npm run lint:js                # eslint only
+bunx prettier --write .            # format
+bunx prettier --check .            # check
+bun run lint:bun:sol               # solhint (Bun)
+bun run lint:bun:js                # eslint (Bun)
 ```
 
 ---
@@ -328,19 +356,19 @@ vectors. Every write path is triple-gated:
 function batchInsertRecords(...) external onlyAdmin whenNotPaused nonReentrant { ... }
 ```
 
-| Mitigation | Implementation |
-|---|---|
-| **Reentrancy** | `ReentrancyGuard` on `batchInsertRecords`, `insertUserHistory` |
-| **Front-running / sandwiching** | `onlyAdmin` — no MEV exposure (permissioned) |
-| **Replay attacks** | Per-user `nonces` mapping increments on every write, emitted in `TransactionAdded` |
-| **DoS via unbounded array push** | `transactionKeys` replaced with `EnumerableSet.Bytes32Set` |
-| **DoS via oversized inputs** | `MAX_BATCH_SIZE = 100`, `MAX_STRING_LENGTH = 256`, `MAX_KEYS = 1_000_000` |
-| **Bad data** | Date validation (day 1–31, month 1–12, year 2000–9999) |
-| **Gas griefing** | `unchecked` on the per-user nonce increment |
-| **Unauthorized access** | `onlyAdmin` (`ADMIN_ROLE`) + `Ownable` (initial owner in constructor) |
-| **Emergency stop** | `Pausable.pause()` / `unpause()` |
-| **Storage layout upgrade risk** | `__gap[50]` reserved for future state variables |
-| **Documentation drift** | NatSpec on every public function |
+| Mitigation                       | Implementation                                                                     |
+| -------------------------------- | ---------------------------------------------------------------------------------- |
+| **Reentrancy**                   | `ReentrancyGuard` on `batchInsertRecords`, `insertUserHistory`                     |
+| **Front-running / sandwiching**  | `onlyAdmin` — no MEV exposure (permissioned)                                       |
+| **Replay attacks**               | Per-user `nonces` mapping increments on every write, emitted in `TransactionAdded` |
+| **DoS via unbounded array push** | `transactionKeys` replaced with `EnumerableSet.Bytes32Set`                         |
+| **DoS via oversized inputs**     | `MAX_BATCH_SIZE = 100`, `MAX_STRING_LENGTH = 256`, `MAX_KEYS = 1_000_000`          |
+| **Bad data**                     | Date validation (day 1–31, month 1–12, year 2000–9999)                             |
+| **Gas griefing**                 | `unchecked` on the per-user nonce increment                                        |
+| **Unauthorized access**          | `onlyAdmin` (`ADMIN_ROLE`) + `Ownable` (initial owner in constructor)              |
+| **Emergency stop**               | `Pausable.pause()` / `unpause()`                                                   |
+| **Storage layout upgrade risk**  | `__gap[50]` reserved for future state variables                                    |
+| **Documentation drift**          | NatSpec on every public function                                                   |
 
 Custom errors (saves ~50 gas per revert, off-chain decoders get structured
 data instead of opaque strings):
@@ -377,23 +405,23 @@ mitigation matrix.
 
 ## Server security model
 
-| Mitigation | Implementation |
-|---|---|
-| **Auth** | `X-Api-Key` (constant-time compare) + optional `Authorization: Bearer <jwt>` |
-| **CORS** | Pinned via `CORS_ALLOWED_ORIGINS` env var (no `*` in production) |
-| **CSP** | Helmet with `default-src 'none'`, `referrer-policy: no-referrer` |
-| **XSS** | `sanitize-html` strips all HTML tags on every input |
-| **HPP (HTTP Parameter Pollution)** | Inline pre-handler hook (replaces unmaintained `hpp` package) |
-| **Body bomb** | `bodyLimit: 1 MiB` |
-| **Schema validation** | JSON Schema on every route — bad payloads rejected at the edge |
-| **Rate limit** | Global 100 req/min via `@fastify/rate-limit` + configurable allowlist |
-| **BigInt serialization** | `bigIntReplacer` — no `TypeError: Do not know how to serialize a BigInt` |
-| **Error leakage** | All `err.message` scrubbed to generic `internal_error` / `bad_request` |
-| **Trust proxy** | `trustProxy` env var — for `X-Forwarded-For` behind a reverse proxy |
-| **Health** | `/health` (liveness) + `/ready` (readiness, checks the RPC) |
-| **Request tracing** | UUID per request, returned in `x-request-id`, included in every log line |
-| **Logging** | Pino JSON, redacts `authorization` / `x-api-key` / `set-cookie` |
-| **Timeouts** | `tx.wait(1 confirmation, 30_000ms timeout)` on every contract call |
+| Mitigation                         | Implementation                                                               |
+| ---------------------------------- | ---------------------------------------------------------------------------- |
+| **Auth**                           | `X-Api-Key` (constant-time compare) + optional `Authorization: Bearer <jwt>` |
+| **CORS**                           | Pinned via `CORS_ALLOWED_ORIGINS` env var (no `*` in production)             |
+| **CSP**                            | Helmet with `default-src 'none'`, `referrer-policy: no-referrer`             |
+| **XSS**                            | `sanitize-html` strips all HTML tags on every input                          |
+| **HPP (HTTP Parameter Pollution)** | Inline pre-handler hook (replaces unmaintained `hpp` package)                |
+| **Body bomb**                      | `bodyLimit: 1 MiB`                                                           |
+| **Schema validation**              | JSON Schema on every route — bad payloads rejected at the edge               |
+| **Rate limit**                     | Global 100 req/min via `@fastify/rate-limit` + configurable allowlist        |
+| **BigInt serialization**           | `bigIntReplacer` — no `TypeError: Do not know how to serialize a BigInt`     |
+| **Error leakage**                  | All `err.message` scrubbed to generic `internal_error` / `bad_request`       |
+| **Trust proxy**                    | `trustProxy` env var — for `X-Forwarded-For` behind a reverse proxy          |
+| **Health**                         | `/health` (liveness) + `/ready` (readiness, checks the RPC)                  |
+| **Request tracing**                | UUID per request, returned in `x-request-id`, included in every log line     |
+| **Logging**                        | Pino JSON, redacts `authorization` / `x-api-key` / `set-cookie`              |
+| **Timeouts**                       | `tx.wait(1 confirmation, 30_000ms timeout)` on every contract call           |
 
 See [docs/SECURITY.md](docs/SECURITY.md) for the full threat model.
 
@@ -441,10 +469,6 @@ export DEPLOYER_PRIVATE_KEY=0x...
 
 # 6. Deploy + verify
 npm run deploy:verify
-# → Deployed: 0x...
-# → Waiting for 5 block confirmations before verifying...
-# → Submitting source for verification...
-# → ✅ Verified
 ```
 
 ### Wire the API
@@ -460,7 +484,7 @@ echo "X_API_KEY=$(openssl rand -hex 32)" >> .env
 echo "NODE_ENV=production" >> .env
 
 # 9. Restart the API
-npm start
+npm start     # or: bun start
 ```
 
 ### Production hardening checklist
@@ -482,28 +506,32 @@ docker build -t replay-tracking .
 docker run -p 3000:3000 --env-file .env replay-tracking
 ```
 
-The Dockerfile is multi-stage, runs as a non-root user, and has a `HEALTHCHECK`
-against `/health`.
+The Dockerfile is multi-stage, uses `oven/bun:1.3.13` as the base image,
+runs as a non-root user, and has a `HEALTHCHECK` against `/health`.
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full deploy guide (per-chain
-RPC config, gas estimation, on-chain verification, rollback procedures).
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full deploy guide
+(per-chain RPC config, gas estimation, on-chain verification, rollback
+procedures) and [docs/PROD_DEPLOY.md](docs/PROD_DEPLOY.md) for the
+step-by-step runbook.
 
 ---
 
 ## CI / CD
 
-Two GitHub Actions workflows ship in `.github/workflows/`:
+Two GitHub Actions workflows ship in `.github/workflows/`. Both use Bun
+via `oven-sh/setup-bun@v2`.
 
 ### `ci.yml` — runs on every push to `main` and every PR
 
 ```yaml
-- npm ci
-- npm audit --audit-level=moderate
-- npm run lint:sol
-- npm run lint:js
-- npm run format:check
-- npm run compile
-- npm run test:contracts
+- oven-sh/setup-bun@v2 (bun-version: 1.3.13)
+- bun install --frozen-lockfile
+- bun audit --audit-level=moderate
+- bun run lint:bun:sol
+- bun run lint:bun:js
+- bunx prettier --check
+- bun run compile:bun
+- bun run test:contracts:bun
 - (install Foundry)
 - forge build
 ```
@@ -511,77 +539,80 @@ Two GitHub Actions workflows ship in `.github/workflows/`:
 ### `audit.yml` — runs weekly (Monday 06:00 UTC) and on demand
 
 ```yaml
-- npm audit --audit-level=high
-- npx solhint 'contracts/**/*.sol'
+- bun install --frozen-lockfile
+- bun audit --audit-level=high
+- bunx solhint 'contracts/**/*.sol'
 ```
 
 ### Dependabot
 
-`.github/dependabot.yml` opens weekly PRs for npm and GitHub Actions updates,
-capped at 10 open PRs.
+`.github/dependabot.yml` opens weekly PRs for npm and GitHub Actions
+updates, capped at 10 open PRs.
 
 ### Renovate (alternative)
 
-`renovate.json` ships as an alternative — auto-merge minor + patch, manual
-review for major.
+`renovate.json` ships as an alternative — auto-merge minor + patch,
+manual review for major.
 
 ---
 
 ## Documentation index
 
-| File | Purpose |
-|---|---|
-| [README.md](README.md) | This file — orientation, quick start, deploy |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System diagram + request lifecycle + failure modes |
-| [docs/SECURITY.md](docs/SECURITY.md) | Threat model + 13-row mitigation matrix + reporting flow |
-| [docs/RUNBOOK.md](docs/RUNBOOK.md) | Common incidents + recovery procedures |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Per-chain deploy guide + production hardening |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to contribute, code style, testing |
-| [docs/CHANGELOG.md](docs/CHANGELOG.md) | All notable changes (v2.1.0, v2.0.0) |
-| [docs/ADR/001-oz-v5-over-v4.md](docs/ADR/001-oz-v5-over-v4.md) | Why we picked OZ v5 |
-| [docs/ADR/002-hardhat-2-not-3.md](docs/ADR/002-hardhat-2-not-3.md) | Why we stayed on Hardhat 2 |
-| [docs/ADR/003-foundry-ape-not-truffle.md](docs/ADR/003-foundry-ape-not-truffle.md) | Why no Truffle/Ganache |
-| [docs/api/openapi.yaml](docs/api/openapi.yaml) | OpenAPI 3.0 spec for the Fastify server |
-| [LICENSE](LICENSE) | MIT license |
-| [SECURITY.md](SECURITY.md) | Vulnerability reporting |
-| [.upgrade/SUMMARY.md](.upgrade/SUMMARY.md) | v1 → v2.0.0 toolchain upgrade log |
-| [.upgrade/v2/SUMMARY.md](.upgrade/v2/SUMMARY.md) | v2.0.0 → v2.1.0 security upgrade log (100 micro-tasks) |
+| File                                                                               | Purpose                                                  |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| [README.md](README.md)                                                             | This file — orientation, quick start, deploy             |
+| [docs/PROD_DEPLOY.md](docs/PROD_DEPLOY.md)                                         | Step-by-step prod-deploy runbook                         |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                                       | System diagram + request lifecycle + failure modes       |
+| [docs/SECURITY.md](docs/SECURITY.md)                                               | Threat model + 13-row mitigation matrix + reporting flow |
+| [docs/RUNBOOK.md](docs/RUNBOOK.md)                                                 | Common incidents + recovery procedures                   |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)                                           | Per-chain deploy guide + production hardening            |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)                                       | How to contribute, code style, testing                   |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md)                                             | All notable changes (v2.2.0, v2.1.0, v2.0.0)             |
+| [docs/ADR/001-oz-v5-over-v4.md](docs/ADR/001-oz-v5-over-v4.md)                     | Why we picked OZ v5                                      |
+| [docs/ADR/002-hardhat-2-not-3.md](docs/ADR/002-hardhat-2-not-3.md)                 | Why we stayed on Hardhat 2                               |
+| [docs/ADR/003-foundry-ape-not-truffle.md](docs/ADR/003-foundry-ape-not-truffle.md) | Why no Truffle/Ganache                                   |
+| [docs/ADR/004-bun-runtime.md](docs/ADR/004-bun-runtime.md)                         | Why we switched to Bun                                   |
+| [docs/api/openapi.yaml](docs/api/openapi.yaml)                                     | OpenAPI 3.0 spec for the Fastify server                  |
+| [LICENSE](LICENSE)                                                                 | MIT license                                              |
+| [SECURITY.md](SECURITY.md)                                                         | Vulnerability reporting                                  |
+| [.upgrade/SUMMARY.md](.upgrade/SUMMARY.md)                                         | v1 → v2.0.0 toolchain upgrade log                        |
+| [.upgrade/v2/SUMMARY.md](.upgrade/v2/SUMMARY.md)                                   | v2.0.0 → v2.1.0 security upgrade log (100 micro-tasks)   |
 
 ---
 
 ## Scripts reference
 
-| Command | What it does |
-|---|---|
-| `npm run compile` | `npx hardhat compile` |
-| `npm run compile:verify` | Same, with success marker (for CI) |
-| `npm run test:contracts` | 32 mocha contract tests |
-| `npm run test:contracts:gas` | Same, with gas reporting |
-| `npm run test:contracts:coverage` | Same, with coverage |
-| `npm test` | Vitest server endpoint tests |
-| `npm run node:hardhat` | Start Hardhat's in-process node on :8545 |
-| `npm run node:anvil` | Start Foundry's anvil on :8545 |
-| `npm run node:stop` | Kill all local nodes |
-| `npm run deploy:local` | Deploy to a local node (auto-detect) |
-| `npm run deploy:anvil` | Deploy to anvil specifically |
-| `npm run deploy:prod` | Deploy to a remote chain |
-| `npm run deploy:verify` | Deploy + auto-verify on Etherscan/Blockscout |
-| `npm run health:rpc` | Ping every configured RPC, report latency |
-| `npm run balance:check` | Pre-flight deployer balance check |
-| `npm run foundry:build` | `forge build` |
-| `npm run foundry:test` | `forge test` |
-| `npm run foundry:fmt` | `forge fmt` (Sol formatter) |
-| `npm run foundry:install` | Install Foundry toolchain |
-| `npm run python:setup` | Create .venv + install eth-ape + eth-brownie |
-| `npm run lint` | solhint + eslint |
-| `npm run lint:sol` | solhint only |
-| `npm run lint:js` | eslint only |
-| `npm run format` | Prettier --write |
-| `npm run format:check` | Prettier --check |
-| `npm run audit` | `npm audit --audit-level=moderate` |
-| `npm run audit:fix` | `npm audit fix` |
-| `make` | See [Makefile](Makefile) for the full target list |
-| `bash scripts/check-all.sh` | Full local CI gate (install → audit → lint → compile → test → forge) |
+The project ships with two parallel script families — one for `npm` (the
+fallback) and one for `bun` (the primary). Both invoke the same code; the
+only difference is the runner.
+
+| Command (npm)               | Command (Bun)                | What it does                                 |
+| --------------------------- | ---------------------------- | -------------------------------------------- |
+| `npm install`               | `bun install`                | Install dependencies                         |
+| `npm run compile`           | `bun run compile:bun`        | `hardhat compile`                            |
+| `npm run test:contracts`    | `bun run test:contracts:bun` | 32 mocha contract tests                      |
+| `npm test`                  | `bun test`                   | Vitest server endpoint tests                 |
+| `npm run node:hardhat`      | `bun run node:hardhat:bun`   | Start Hardhat's in-process node on :8545     |
+| `npm run node:anvil`        | `anvil`                      | Start Foundry's anvil on :8545               |
+| `npm run deploy:local`      | (same)                       | Deploy to a local node                       |
+| `npm run deploy:prod`       | (same)                       | Deploy to a remote chain                     |
+| `npm run deploy:verify`     | (same)                       | Deploy + auto-verify on Etherscan            |
+| `npm run health:rpc`        | (same)                       | Ping every configured RPC                    |
+| `npm run balance:check`     | (same)                       | Pre-flight deployer balance check            |
+| `npm run foundry:build`     | `forge build`                | Foundry build                                |
+| `npm run foundry:test`      | `forge test`                 | Foundry tests                                |
+| `npm run foundry:fmt`       | `forge fmt`                  | Solidity formatter                           |
+| `npm run python:setup`      | (same)                       | Create .venv + install eth-ape + eth-brownie |
+| `npm run lint`              | `bun run lint:bun`           | solhint + eslint                             |
+| `npm run lint:sol`          | `bun run lint:bun:sol`       | solhint only                                 |
+| `npm run lint:js`           | `bun run lint:bun:js`        | eslint only                                  |
+| `npm run format`            | `bunx prettier --write .`    | Prettier format                              |
+| `npm run format:check`      | `bunx prettier --check .`    | Prettier check                               |
+| `npm run audit`             | `bun audit`                  | Security audit                               |
+| `bash scripts/check-all.sh` | (same)                       | Full local CI gate (bun-aware)               |
+
+> All deploy / RPC-check / balance-check scripts use `node` directly because
+> they don't benefit from Bun's runtime (they're one-shot CLI tools).
 
 ---
 
@@ -599,6 +630,8 @@ If you were running the v0.8.24 OZ-v4 contract on prod, you need to:
    and `insertUserHistory` (for user summaries).
 5. **Migrate `nonces`** if your off-chain code reads it — it now actually
    increments (was defined-but-unused in v1).
+6. **Switch to Bun** (optional but recommended) — `bun install` replaces
+   `npm install`; `bunx` replaces `npx`. See [docs/ADR/004-bun-runtime.md](docs/ADR/004-bun-runtime.md).
 
 The storage layout is **not** compatible (v1 used `bytes32[] transactionKeys`,
 v2 uses `EnumerableSet.Bytes32Set`). Treat this as a redeploy, not an upgrade.

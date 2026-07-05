@@ -61,9 +61,9 @@ describe("ReplayTrackingContractV3 (v2)", function () {
 
     it("reverts with OwnableInvalidOwner if initialOwner is 0x0", async function () {
       const Factory = await ethers.getContractFactory("ReplayTrackingContractV3");
-      await expect(Factory.deploy(ZERO_ADDR)).to.be.revertedWithCustomError(
-        Factory, "OwnableInvalidOwner"
-      ).withArgs(ZERO_ADDR);
+      await expect(Factory.deploy(ZERO_ADDR))
+        .to.be.revertedWithCustomError(Factory, "OwnableInvalidOwner")
+        .withArgs(ZERO_ADDR);
     });
   });
 
@@ -72,10 +72,9 @@ describe("ReplayTrackingContractV3 (v2)", function () {
   describe("access control", function () {
     it("reverts NotAdmin when a non-admin calls batchInsertRecords", async function () {
       const { contract, alice } = await loadFixture(deployFixture);
-      await expect(
-        contract.connect(alice).batchInsertRecords([sampleTxn()])
-      ).to.be.revertedWithCustomError(contract, "NotAdmin")
-       .withArgs(alice.address);
+      await expect(contract.connect(alice).batchInsertRecords([sampleTxn()]))
+        .to.be.revertedWithCustomError(contract, "NotAdmin")
+        .withArgs(alice.address);
     });
 
     it("reverts NotAdmin when an admin-only function is called by a non-admin", async function () {
@@ -115,8 +114,10 @@ describe("ReplayTrackingContractV3 (v2)", function () {
       const { contract, owner } = await loadFixture(deployFixture);
       await contract.connect(owner).pause();
       await contract.connect(owner).unpause();
-      await expect(contract.connect(owner).batchInsertRecords([sampleTxn()]))
-        .to.emit(contract, "TransactionAdded");
+      await expect(contract.connect(owner).batchInsertRecords([sampleTxn()])).to.emit(
+        contract,
+        "TransactionAdded"
+      );
     });
   });
 
@@ -125,15 +126,12 @@ describe("ReplayTrackingContractV3 (v2)", function () {
   describe("batchInsertRecords", function () {
     it("emits TransactionAdded for each record with the correct payload", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      const txns = [
-        sampleTxn({ userId: "alice" }),
-        sampleTxn({ userId: "bob" }),
-      ];
+      const txns = [sampleTxn({ userId: "alice" }), sampleTxn({ userId: "bob" })];
       await expect(contract.connect(owner).batchInsertRecords(txns))
         .to.emit(contract, "TransactionAdded")
         .withArgs("alice", 22n, 6n, 2026n, "asset-1", 120n, 10n, 5n, 1n)
         .to.emit(contract, "TransactionAdded")
-        .withArgs("bob",   22n, 6n, 2026n, "asset-1", 120n, 10n, 5n, 1n);
+        .withArgs("bob", 22n, 6n, 2026n, "asset-1", 120n, 10n, 5n, 1n);
     });
 
     it("reverts with BatchTooLarge(0,100) on empty array", async function () {
@@ -154,37 +152,46 @@ describe("ReplayTrackingContractV3 (v2)", function () {
     it("reverts StringTooLong when userId exceeds MAX_STRING_LENGTH", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
       const long = "a".repeat(257);
-      await expect(contract.connect(owner).batchInsertRecords([sampleTxn({ userId: long })]))
-        .to.be.revertedWithCustomError(contract, "StringTooLong");
+      await expect(
+        contract.connect(owner).batchInsertRecords([sampleTxn({ userId: long })])
+      ).to.be.revertedWithCustomError(contract, "StringTooLong");
     });
 
     it("reverts InvalidDate when month is 0 or 13", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      await expect(contract.connect(owner).batchInsertRecords([sampleTxn({ month: 0 })]))
-        .to.be.revertedWithCustomError(contract, "InvalidDate");
-      await expect(contract.connect(owner).batchInsertRecords([sampleTxn({ month: 13 })]))
-        .to.be.revertedWithCustomError(contract, "InvalidDate");
+      await expect(
+        contract.connect(owner).batchInsertRecords([sampleTxn({ month: 0 })])
+      ).to.be.revertedWithCustomError(contract, "InvalidDate");
+      await expect(
+        contract.connect(owner).batchInsertRecords([sampleTxn({ month: 13 })])
+      ).to.be.revertedWithCustomError(contract, "InvalidDate");
     });
 
     it("reverts InvalidDate when day is 0 or 32", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      await expect(contract.connect(owner).batchInsertRecords([sampleTxn({ day: 0 })]))
-        .to.be.revertedWithCustomError(contract, "InvalidDate");
-      await expect(contract.connect(owner).batchInsertRecords([sampleTxn({ day: 32 })]))
-        .to.be.revertedWithCustomError(contract, "InvalidDate");
+      await expect(
+        contract.connect(owner).batchInsertRecords([sampleTxn({ day: 0 })])
+      ).to.be.revertedWithCustomError(contract, "InvalidDate");
+      await expect(
+        contract.connect(owner).batchInsertRecords([sampleTxn({ day: 32 })])
+      ).to.be.revertedWithCustomError(contract, "InvalidDate");
     });
 
     it("reverts InvalidDate when year is out of range", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      await expect(contract.connect(owner).batchInsertRecords([sampleTxn({ year: 1999 })]))
-        .to.be.revertedWithCustomError(contract, "InvalidDate");
-      await expect(contract.connect(owner).batchInsertRecords([sampleTxn({ year: 10000 })]))
-        .to.be.revertedWithCustomError(contract, "InvalidDate");
+      await expect(
+        contract.connect(owner).batchInsertRecords([sampleTxn({ year: 1999 })])
+      ).to.be.revertedWithCustomError(contract, "InvalidDate");
+      await expect(
+        contract.connect(owner).batchInsertRecords([sampleTxn({ year: 10000 })])
+      ).to.be.revertedWithCustomError(contract, "InvalidDate");
     });
 
     it("returns the number of new keys added", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      const tx1 = await contract.connect(owner).batchInsertRecords([sampleTxn({ userId: "alice" })]);
+      const tx1 = await contract
+        .connect(owner)
+        .batchInsertRecords([sampleTxn({ userId: "alice" })]);
       const r1 = await tx1.wait();
       // 1 new key (alice/22/6/2026/asset-1)
       const events = r1.logs.filter((l) => l.fragment && l.fragment.name === "TransactionAdded");
@@ -197,12 +204,9 @@ describe("ReplayTrackingContractV3 (v2)", function () {
   describe("insertUserHistory + getUserHistories", function () {
     it("stores and retrieves user histories", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      await contract.connect(owner).insertUserHistory(
-        ["alice", "bob"],
-        [100, 200],
-        [10, 20],
-        [5, 10]
-      );
+      await contract
+        .connect(owner)
+        .insertUserHistory(["alice", "bob"], [100, 200], [10, 20], [5, 10]);
       const alice = await contract.getUserHistories("alice");
       expect(alice.length).to.equal(1);
       expect(alice[0].totalDuration).to.equal(100n);
@@ -230,11 +234,13 @@ describe("ReplayTrackingContractV3 (v2)", function () {
   describe("view functions", function () {
     it("getTransactionsByUserId returns all txns for a user", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      await contract.connect(owner).batchInsertRecords([
-        sampleTxn({ userId: "alice", assetId: "a1" }),
-        sampleTxn({ userId: "alice", assetId: "a2", day: 23 }),
-        sampleTxn({ userId: "bob", assetId: "a1" }),
-      ]);
+      await contract
+        .connect(owner)
+        .batchInsertRecords([
+          sampleTxn({ userId: "alice", assetId: "a1" }),
+          sampleTxn({ userId: "alice", assetId: "a2", day: 23 }),
+          sampleTxn({ userId: "bob", assetId: "a1" }),
+        ]);
       const aliceTxns = await contract.getTransactionsByUserId("alice");
       expect(aliceTxns.length).to.equal(2);
     });
@@ -247,10 +253,12 @@ describe("ReplayTrackingContractV3 (v2)", function () {
 
     it("getTransactionsByUserIdAndAssetId filters correctly", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      await contract.connect(owner).batchInsertRecords([
-        sampleTxn({ userId: "alice", assetId: "a1" }),
-        sampleTxn({ userId: "alice", assetId: "a2", day: 23 }),
-      ]);
+      await contract
+        .connect(owner)
+        .batchInsertRecords([
+          sampleTxn({ userId: "alice", assetId: "a1" }),
+          sampleTxn({ userId: "alice", assetId: "a2", day: 23 }),
+        ]);
       const out = await contract.getTransactionsByUserIdAndAssetId("alice", "a1");
       expect(out.length).to.equal(1);
       expect(out[0].assetId).to.equal("a1");
@@ -265,11 +273,13 @@ describe("ReplayTrackingContractV3 (v2)", function () {
 
     it("getTransactionKeys returns all distinct daily keys", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      await contract.connect(owner).batchInsertRecords([
-        sampleTxn({ userId: "alice" }),
-        sampleTxn({ userId: "bob" }),
-        sampleTxn({ userId: "alice", day: 23 }),
-      ]);
+      await contract
+        .connect(owner)
+        .batchInsertRecords([
+          sampleTxn({ userId: "alice" }),
+          sampleTxn({ userId: "bob" }),
+          sampleTxn({ userId: "alice", day: 23 }),
+        ]);
       const keys = await contract.getTransactionKeys();
       expect(keys.length).to.equal(3);
     });
@@ -310,11 +320,11 @@ describe("ReplayTrackingContractV3 (v2)", function () {
   describe("MAX_BATCH_SIZE boundary", function () {
     it("accepts exactly 50 records (gas ceiling for the test suite)", async function () {
       const { contract, owner } = await loadFixture(deployFixture);
-      const txns = Array.from({ length: 50 }, (_, i) =>
-        sampleTxn({ userId: `u${i}`, day: 22 })
+      const txns = Array.from({ length: 50 }, (_, i) => sampleTxn({ userId: `u${i}`, day: 22 }));
+      await expect(contract.connect(owner).batchInsertRecords(txns)).to.emit(
+        contract,
+        "TransactionAdded"
       );
-      await expect(contract.connect(owner).batchInsertRecords(txns))
-        .to.emit(contract, "TransactionAdded");
     });
 
     it("reverts with BatchTooLarge(101,100) on 101 elements", async function () {
@@ -346,8 +356,10 @@ describe("ReplayTrackingContractV3 (v2)", function () {
             totalRewardsContentOwner: BigInt(i),
           })
         );
-        await expect(contract.connect(owner).batchInsertRecords(txns))
-          .to.emit(contract, "TransactionAdded");
+        await expect(contract.connect(owner).batchInsertRecords(txns)).to.emit(
+          contract,
+          "TransactionAdded"
+        );
       }
     });
   });

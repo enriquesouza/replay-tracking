@@ -51,10 +51,10 @@ flowchart LR
 
 ## Failure modes
 
-| Failure | Detection | Recovery |
-|---|---|---|
-| RPC unreachable | `provider.getBlockNumber()` in `/ready` | 503 from `/ready`; client retries |
-| Rate limit exceeded | `@fastify/rate-limit` | 429 with `Retry-After` |
-| Auth failure | `onRequest` hook | 401 |
-| Schema violation | Fastify built-in | 400 with the validation error |
-| Out-of-gas on chain | `tx.wait()` throws | 400 + log; admin retries with higher gas |
+| Failure             | Detection                               | Recovery                                 |
+| ------------------- | --------------------------------------- | ---------------------------------------- |
+| RPC unreachable     | `provider.getBlockNumber()` in `/ready` | 503 from `/ready`; client retries        |
+| Rate limit exceeded | `@fastify/rate-limit`                   | 429 with `Retry-After`                   |
+| Auth failure        | `onRequest` hook                        | 401                                      |
+| Schema violation    | Fastify built-in                        | 400 with the validation error            |
+| Out-of-gas on chain | `tx.wait()` throws                      | 400 + log; admin retries with higher gas |

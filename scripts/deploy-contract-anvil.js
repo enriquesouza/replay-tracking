@@ -6,8 +6,7 @@ const { ethers } = require("ethers");
 configDotenv();
 
 const LOCAL_RPC = process.env.LOCAL_RPC_URL || "http://127.0.0.1:8545";
-const DEFAULT_ANVIL_KEY =
-  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const DEFAULT_ANVIL_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
 const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY || DEFAULT_ANVIL_KEY;
 
@@ -20,7 +19,9 @@ async function main() {
   }
   const wallet = new ethers.Wallet(deployerPrivateKey, provider);
 
-  const artifact = require(`../artifacts/contracts/ReplayTrackingContractV2.sol/ReplayTrackingContractV3.json`);
+  const artifact = require(
+    `../artifacts/contracts/ReplayTrackingContractV2.sol/ReplayTrackingContractV3.json`
+  );
   const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, wallet);
 
   console.log(`Deployer: ${wallet.address}`);
