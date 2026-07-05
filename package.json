@@ -83,7 +83,7 @@
     "@types/chai": "^4.2.0",
     "@types/mocha": "^9.1.0",
     "@types/node": "^20.0.0",
-    "chai": "^4.2.0",
+    "chai": "^6.2.2",
     "commitlint": "^19.0.0",
     "eslint": "^9.10.0",
     "globals": "^15.0.0",
