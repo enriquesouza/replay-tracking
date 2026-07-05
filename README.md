@@ -13,6 +13,11 @@
 ## Table of contents
 
 - [What this is](#what-this-is)
+  - [The business in plain English](#the-business-in-plain-english)
+  - [Why on-chain?](#why-on-chain)
+  - [The Fastify API](#the-fastify-api)
+  - [Emergency stop](#emergency-stop)
+- [Business rules](#business-rules)
 - [Quick start (5 minutes)](#quick-start-5-minutes)
 - [Architecture](#architecture)
 - [Toolchain](#toolchain)
@@ -31,17 +36,120 @@
 
 ## What this is
 
-`ReplayTrackingContractV3` is a Solidity contract that:
+This project is a **content-viewing replay tracking system for a tokenized
+marketplace**. It records who watched what content, when, and for how long —
+then computes per-user reward balances split between the viewer ("consumer")
+and the content creator/owner.
 
-- Records who watched which asset on which day, and for how long.
-- Computes per-user reward balances (consumer + content-owner) over time.
-- Exposes a `pause` / `unpause` emergency stop.
-- Gates all writes behind a role-based access control (`ADMIN_ROLE`).
-- Rejects reentrancy, oversized batches, oversized strings, and invalid dates.
+### The business in plain English
 
-The companion Fastify API in `server/` reads from the contract over JSON-RPC
-and exposes it over HTTPS, with a hardened middleware stack (CSP, CORS
-allowlist, HPP, sanitize-html, constant-time API key compare, optional JWT).
+1. **Users watch content.** A user opens a video (or replay) on the platform
+   and watches it for some number of seconds.
+2. **The platform operator aggregates the data.** At the end of each day, for
+   each `(user, asset)` pair, an admin submits a single summary record to the
+   contract: total seconds watched + reward amounts owed to the consumer and
+   to the content owner.
+3. **Rewards accumulate on-chain.** The contract stores cumulative daily
+   snapshots per user — each snapshot holds `totalDuration`,
+   `totalRewardsConsumer` (tokens owed to the viewer), and
+   `totalRewardsContentOwner` (tokens owed to the creator). Anyone can read
+   these balances off-chain or in a dApp.
+
+### Why on-chain?
+
+- **Transparency.** Any participant can verify their own rewards without
+  trusting a central ledger.
+- **Immutability.** Once an admin submits a batch, it cannot be silently
+  altered — only paused (via governance).
+- **Composability.** Other contracts or indexers can read the `TransactionAdded`
+  and `UserHistoryInserted` events to build dashboards, leaderboards, or
+  settlement pipelines.
+
+### The Fastify API
+
+The Solidity contract is the source of truth. The companion Fastify server in
+`server/` reads from it over JSON-RPC and exposes a REST interface with auth
+(`X-Api-Key` / optional JWT), rate limiting, CSP, CORS allowlist, HPP
+protection, and structured logging. It exists so off-chain clients don't need
+to run their own node — but the contract is still authoritative.
+
+### Emergency stop
+
+The whole contract can be paused by any `ADMIN_ROLE` account via
+`pause()` / `unpause()`. While paused, no new data can be written. This is a
+defence-in-depth measure against bugs or exploits in upstream admin scripts.
+
+---
+
+## Business rules
+
+These are the actual business constraints enforced by the contract and server.
+They describe what "real" means for this system — not just code, but intent.
+
+### Who can write data?
+
+Only accounts with `ADMIN_ROLE` may call any state-mutating function. The
+constructor grants both `DEFAULT_ADMIN_ROLE` and `ADMIN_ROLE` to a single
+initial owner address (the deployer). All other accounts are read-only unless
+they receive the role via governance later.
+
+### What is being recorded?
+
+Two parallel data streams, both cumulative:
+
+| Stream             | Function             | Meaning                                                                                                                                                 |
+| ------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Transactions**   | `batchInsertRecords` | Per-`(user, day, asset)` summaries submitted by admins. Each record contains the total seconds watched and the reward split (consumer + content owner). |
+| **User histories** | `insertUserHistory`  | Per-user cumulative snapshots appended over time. Each snapshot holds `totalDuration`, `totalRewardsConsumer`, and `totalRewardsContentOwner`.          |
+
+Records are keyed by a deterministic hash of `(userId, day, month, year, assetId)` — the same key always resolves to the same bucket in storage. This means **re-submitting an identical batch is idempotent** (the set membership check prevents duplicate pushes).
+
+### Constraints on writes
+
+| Rule                            | Enforcement                                                                                                                                                      | Rationale |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **Batch size ≤ 100**            | `batchInsertRecords` reverts with `BatchTooLarge` if the array length exceeds `MAX_BATCH_SIZE`. Prevents gas griefing and keeps tx costs predictable.            |
+| **Total keys ≤ 1,000,000**      | `_transactionKeys.add()` checks against `MAX_KEYS`. The global key set is an `EnumerableSet.Bytes32Set` (replaces the v1 unbounded array that was a DoS vector). |
+| **String fields ≤ 256 chars**   | `_checkStringLength("userId", ...)` and same for `assetId`. Prevents oversized calldata.                                                                         |
+| **Dates are valid**             | Day: 1–31, Month: 1–12, Year: 2000–9999. Reverts with `InvalidDate(day, month, year)`.                                                                           |
+| **Arrays must match length**    | `insertUserHistory` requires all four input arrays to have the same length as `userIds`. Otherwise `BatchTooLarge(length, MAX_BATCH_SIZE)`.                      |
+| **Contract must not be paused** | All writes are gated by `whenNotPaused`. While paused, only reads work.                                                                                          |
+
+### What happens when data is written?
+
+1. The contract validates every field in the batch.
+2. For each record: it computes the storage key via `encodeKey(userId, day, month, year, assetId)`, pushes the transaction into that bucket, and increments a per-user nonce (for EIP-712-style anti-replay).
+3. A `TransactionAdded` event is emitted with all fields including the new nonce.
+
+For user histories: a new entry is appended to the per-user history array, and a `UserHistoryInserted` event is emitted.
+
+### What can anyone read?
+
+| Endpoint                    | Source of truth               | Notes                                                                                                      |
+| --------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `/getUserHistories/:userId` | On-chain (`getUserHistories`) | Returns the full user history list or 404 if empty.                                                        |
+| `/getTransactions?...`      | On-chain + query params       | Supports filtering by `userID`, `assetID`, `day`, `month`, `year`. Multiple filter combinations are valid. |
+
+Both endpoints return data without auth (read operations don't require API keys). Writes do — see the server security model below.
+
+### What about rewards?
+
+The contract does **not** calculate or distribute rewards itself. It only stores:
+
+- `totalRewardsConsumer` — cumulative tokens owed to the viewer for that batch.
+- `totalRewardsContentOwner` — cumulative tokens owed to the content creator for that batch.
+
+A separate settlement pipeline (off-chain, not in this repo) reads these balances and executes the token transfers. The contract is the ledger; the transfer logic lives elsewhere.
+
+### What about nonces?
+
+Every write by a given `userId` bumps an incrementing nonce:
+
+- `nonces[userId]` starts at 0 (the default).
+- Each successful call sets it to `previous + 1`.
+- The new nonce is emitted in the event, so off-chain consumers can verify ordering without re-reading storage.
+
+Nonces are reserved for future EIP-712 signed-call anti-replay; they're not currently consumed by any function but provide a forward-compatible anchor.
 
 ### Runtime
 
